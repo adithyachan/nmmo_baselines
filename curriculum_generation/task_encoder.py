@@ -41,7 +41,7 @@ class TaskEncoder:
             self.model = AutoModelForCausalLM.from_pretrained(checkpoint,
                                                               trust_remote_code=True,
                                                               device_map="auto",
-                                                              load_in_8bit=True)
+                                                              torch_dtype=torch.bfloat16)
         else:
             self.model = AutoModelForCausalLM.from_pretrained(checkpoint,
                                                               trust_remote_code=True).to(self.device)
@@ -73,7 +73,7 @@ class TaskEncoder:
                 batch = prompts[i: i + self.batch_size]
                 tokens = self.tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(self.device)
                 outputs = self.model(**tokens, output_hidden_states=True)
-                embeddings = outputs.hidden_states[-1].mean(dim=1).detach().cpu().numpy()
+                embeddings = outputs.hidden_states[-1].mean(dim=1).detach().cpu().to(torch.float32).numpy()
                 all_embeddings.extend(embeddings.astype(np.float16))
         return all_embeddings
 
@@ -155,8 +155,8 @@ class TaskEncoder:
 
 if __name__ == "__main__":
     import curriculum_generation.manual_curriculum as curriculum
-    LLM_CHECKPOINT = "Salesforce/codegen25-7b-instruct"
-    CURRICULUM_FILE_PATH = "reinforcement_learning/curriculum_with_embedding.pkl"
+    LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
+    CURRICULUM_FILE_PATH = "curriculum_generation/curriculum_with_embedding.pkl"
 
     with TaskEncoder(LLM_CHECKPOINT, curriculum, batch_size=6) as task_encoder:
         task_encoder.get_task_embedding(

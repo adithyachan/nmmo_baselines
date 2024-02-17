@@ -4,7 +4,7 @@ import unittest
 import curriculum_generation.manual_curriculum
 from curriculum_generation.task_encoder import TaskEncoder
 
-LLM_CHECKPOINT = "Salesforce/codegen25-7b-instruct"
+LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
 CURRICULUM_FILE_PATH = "curriculum_with_embedding.pkl"
 
 # NOTE: different LLMs will give different embedding dimensions

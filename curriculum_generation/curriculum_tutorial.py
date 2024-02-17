@@ -105,7 +105,7 @@ if __name__ == "__main__":
     print("------------------------------------------------------------")
     print("Generating the task spec with embedding file ...")
     from task_encoder import TaskEncoder
-    LLM_CHECKPOINT = "Salesforce/codegen25-7b-instruct"
+    LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
 
     # Get the task embeddings for the training tasks and save to file
     # You need to provide the curriculum file as a module to the task encoder
@@ -113,57 +113,59 @@ if __name__ == "__main__":
         task_encoder.get_task_embedding(CURRICULUM, save_to_file=CURRICULUM_FILE_PATH)
     print("Done.")
 
-    # Initialize the trainer with the custom curriculum
-    # These lines are the same as the RL track. If these don't run, please see train.py
-    from reinforcement_learning import config
-    from train import setup_env
-    args = config.create_config(config.Config)
-    args.tasks_path = CURRICULUM_FILE_PATH  # This is the curriculum file saved by the task encoder
+    # TODO: MAKE THE BELOW CODE WORK
 
-    # Remove below lines if you want to use the default training config
-    local_mode = True
-    if local_mode:
-        args.num_envs = 1
-        args.num_buffers = 1
-        args.use_serial_vecenv = True
-        args.rollout_batch_size = 2**12
+    # # Initialize the trainer with the custom curriculum
+    # # These lines are the same as the RL track. If these don't run, please see train.py
+    # from reinforcement_learning import config
+    # from train import setup_env
+    # args = config.create_config(config.Config)
+    # args.tasks_path = CURRICULUM_FILE_PATH  # This is the curriculum file saved by the task encoder
 
-    print("------------------------------------------------------------")
-    print("Setting up the agent training env ...")
-    trainer = setup_env(args)
+    # # Remove below lines if you want to use the default training config
+    # local_mode = True
+    # if local_mode:
+    #     args.num_envs = 1
+    #     args.num_buffers = 1
+    #     args.use_serial_vecenv = True
+    #     args.rollout_batch_size = 2**12
 
-    # Train agents using the curriculum file
-    # NOTE: this is basically the same as the reinforcement_learning_track function in the train.py
-    while not trainer.done_training():
-        print("------------------------------------------------------------")
-        print("Evaluating the agents ...")
-        _, _, infos = trainer.evaluate()
-        # The training task stats are available in infos, which then can be use for training task selection
-        if len(infos) > 0:
-            print("------------------------------------------------------------")
-            print("Training task stats:")
-            curri_keys = [key for key in infos.keys() if key.startswith("curriculum/")]
-            for key in curri_keys:
-                completed = []
-                max_progress = []
-                reward_signal_count = []
-                for sub_list in infos[key]:
-                    for prog, rcnt in sub_list:
-                        completed.append(int(prog>=1)) # progress >= 1 is considered task complete
-                        max_progress.append(prog)
-                        reward_signal_count.append(rcnt)
-                print(f"{key} -- task tried: {len(completed)}, completed: {sum(completed)}, " +
-                      f"avg max progress: {sum(max_progress)/len(max_progress):.3f}, " +
-                      f"avg reward signal count: {sum(reward_signal_count)/len(reward_signal_count):.3f}")
+    # print("------------------------------------------------------------")
+    # print("Setting up the agent training env ...")
+    # trainer = setup_env(args)
 
-            print("------------------------------------------------------------")
-            print("The tutorial is done.")
-            break
+    # # Train agents using the curriculum file
+    # # NOTE: this is basically the same as the reinforcement_learning_track function in the train.py
+    # while not trainer.done_training():
+    #     print("------------------------------------------------------------")
+    #     print("Evaluating the agents ...")
+    #     _, _, infos = trainer.evaluate()
+    #     # The training task stats are available in infos, which then can be use for training task selection
+    #     if len(infos) > 0:
+    #         print("------------------------------------------------------------")
+    #         print("Training task stats:")
+    #         curri_keys = [key for key in infos.keys() if key.startswith("curriculum/")]
+    #         for key in curri_keys:
+    #             completed = []
+    #             max_progress = []
+    #             reward_signal_count = []
+    #             for sub_list in infos[key]:
+    #                 for prog, rcnt in sub_list:
+    #                     completed.append(int(prog>=1)) # progress >= 1 is considered task complete
+    #                     max_progress.append(prog)
+    #                     reward_signal_count.append(rcnt)
+    #             print(f"{key} -- task tried: {len(completed)}, completed: {sum(completed)}, " +
+    #                   f"avg max progress: {sum(max_progress)/len(max_progress):.3f}, " +
+    #                   f"avg reward signal count: {sum(reward_signal_count)/len(reward_signal_count):.3f}")
 
-        print("------------------------------------------------------------")
-        print("Training the agents ...")
-        trainer.train(
-            update_epochs=args.ppo_update_epochs,
-            bptt_horizon=args.bptt_horizon,
-            batch_rows=args.ppo_training_batch_size // args.bptt_horizon,
-        )
+    #         print("------------------------------------------------------------")
+    #         print("The tutorial is done.")
+    #         break
+
+    #     print("------------------------------------------------------------")
+    #     print("Training the agents ...")
+    #     trainer.train(
+    #         update_epochs=args.ppo_update_epochs,
+    #         bptt_horizon=args.bptt_horizon,
+    #         batch_rows=args.ppo_training_batch_size // args.bptt_horizon,
+    #     )
