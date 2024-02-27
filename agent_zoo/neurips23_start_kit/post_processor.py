@@ -56,7 +56,7 @@ class Postprocessor(StatPostprocessor):
 
     def reward_done_truncated_info(self, reward, done, truncated, info):
         '''Called on reward, done, and info before they are returned from the environment'''
-        env = self.env.env  # TODO: env.env is due to the pettingzoo wrapper. Remove this.
+        env = self.env
 
         # Stop early if there are too few agents generating the training data
         if len(env.agents) <= self.early_stop_agent_num:

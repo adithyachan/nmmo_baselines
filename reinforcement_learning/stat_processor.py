@@ -4,7 +4,7 @@ import numpy as np
 import pufferlib
 import pufferlib.emulation
 
-from nmmo.lib.log import EventCode
+from nmmo.lib.event_code import EventCode
 import nmmo.systems.item as Item
 
 class StatPostprocessor(pufferlib.emulation.Postprocessor):
@@ -57,8 +57,7 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
         self._last_price = 0
 
     def _update_stats(self, agent):
-        # TODO: env.env is due to the pettingzoo wrapper. Remove this.
-        task = self.env.env.agent_task_map[agent.ent_id][0]
+        task = self.env.agent_task_map[agent.ent_id][0]
         # For each task spec, record whether its max progress and reward count
         self._curriculum[task.spec_name].append((task._max_progress, task.reward_signal_count))
         self._max_task_progress = task._max_progress
@@ -88,7 +87,9 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
     def observation(self, observation):
         # Mask out the last selected price
         observation["ActionTargets"]["Sell"]["Price"][self._last_price] = 0
-        return observation
+
+        # NOTE: nmmo obs is mapping proxy, which doesn't work with pufferlib flatten
+        return dict(observation)
 
     def action(self, action):
         self._last_moves.append(action[8])  # 8 is the index for move direction
@@ -107,7 +108,7 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
             return reward, done, truncated, info
 
         # Count and store unique event counts for easier use
-        realm = self.env.env.realm  # TODO: env.env is due to the pettingzoo wrapper. Remove this.
+        realm = self.env.realm
         log = realm.event_log.get_data(agents=[self.agent_id])
         self._prev_unique_count = self._curr_unique_count
         self._curr_unique_count = len(extract_unique_event(log, realm.event_log.attr_to_col))
