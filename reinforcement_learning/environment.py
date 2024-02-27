@@ -7,6 +7,7 @@ import pufferlib.wrappers
 
 import nmmo 
 import nmmo.core.config as nc
+import nmmo.core.game_api as ng
 
 class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progression,
              nc.Item, nc.Equipment, nc.Profession, nc.Exchange):
@@ -28,6 +29,7 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("RESOURCE_RESILIENT_POPULATION", env_args.resilient_population)
         self.set("COMBAT_SPAWN_IMMUNITY", env_args.spawn_immunity)
 
+        self.set("GAME_PACKS", [(ng.AgentTraining, 1)])
         self.set("CURRICULUM_FILE_PATH", env_args.curriculum_file_path)
 
 def make_env_creator(postprocessor_cls: pufferlib.emulation.Postprocessor):

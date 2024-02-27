@@ -1,7 +1,7 @@
 wandb:
   project: nmmo
   entity: kywch
-  group: puf07_test
+  group: ~
 
 debug:
   train:
@@ -77,7 +77,7 @@ env:
   map_size: 128
   num_maps: 128
   map_force_generation: False
-  death_fog_tick: None
+  death_fog_tick: ~
   task_size: 2048
   spawn_immunity: 20
   resilient_population: 0.2
