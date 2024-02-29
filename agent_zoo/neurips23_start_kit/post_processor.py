@@ -23,7 +23,7 @@ class Postprocessor(StatPostprocessor):
         explore_bonus_weight=0,
         clip_unique_event=3,
     ):
-        super().__init__(env, agent_id, eval_mode)
+        super().__init__(env, agent_id, eval_mode, early_stop_agent_num)
         self.early_stop_agent_num = early_stop_agent_num
         self.sqrt_achievement_rewards = sqrt_achievement_rewards
         self.heal_bonus_weight = heal_bonus_weight

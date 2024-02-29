@@ -57,12 +57,11 @@ def init_wandb(args, resume=True):
     assert args.wandb.project is not None, 'Please set the wandb project in config.yaml'
     assert args.wandb.entity is not None, 'Ple ase set the wandb entity in config.yaml'
     import wandb
-    return wandb.init(
-        id=args.exp_name or wandb.util.generate_id(),
-        project=args.wandb.project,
-        entity=args.wandb.entity,
-        group=args.wandb.group,
-        config={
+    wandb_kwargs = {
+        'id': args.exp_name or wandb.util.generate_id(),
+        'project': args.wandb.project,
+        'entity': args.wandb.entity,
+        'config': {
             'cleanrl': args.train,
             'env': args.env,
             'agent_zoo': args.agent,
@@ -70,11 +69,14 @@ def init_wandb(args, resume=True):
             'postproc': args.postproc,
             'recurrent': args.recurrent,
         },
-        name=args.exp_name,
-        monitor_gym=True,
-        save_code=True,
-        resume=resume,
-    )
+        'name': args.exp_name,
+        'monitor_gym': True,
+        'save_code': True,
+        'resume': resume,
+    }
+    if args.wandb.group is not None:
+        wandb_kwargs['group'] = args.wandb.group
+    return wandb.init(**wandb_kwargs)
 
 # Return env_creator, agent_creator
 def setup_agent(module_name):
@@ -138,11 +140,11 @@ def sweep(args, env_creator, agent_creator):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse environment argument', add_help=False)
-    parser.add_argument('--mode', type=str, default='train', choices='train sweep evaluate'.split())
-    parser.add_argument('--agent', type=str, default='neurips23_start_kit', help='Agent module to use')
-    parser.add_argument('--exp-name', type=str, default=None, help="Need exp name to resume the experiment")
-    parser.add_argument('--eval-model-path', type=str, default=None, help='Path to model to evaluate')
-    parser.add_argument('--curriculum', type=str, default=BASELINE_CURRICULUM, help='Path to curriculum file')
+    parser.add_argument('-m', '--mode', type=str, default='train', choices='train sweep evaluate'.split())
+    parser.add_argument('-a', '--agent', type=str, default='neurips23_start_kit', help='Agent module to use')
+    parser.add_argument('-n', '--exp-name', type=str, default=None, help="Need exp name to resume the experiment")
+    parser.add_argument('-p', '--eval-model-path', type=str, default=None, help='Path to model to evaluate')
+    parser.add_argument('-c', '--curriculum', type=str, default=BASELINE_CURRICULUM, help='Path to curriculum file')
     #parser.add_argument('--baseline', action='store_true', help='Baseline run')
     #parser.add_argument('--no-render', action='store_true', help='Disable render during evaluate')
     parser.add_argument('--vectorization', type=str, default='multiprocessing', choices='serial multiprocessing ray'.split())

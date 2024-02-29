@@ -7,7 +7,6 @@ import nmmo
 import nmmo.lib.material as m
 import nmmo.systems.item as Item
 import nmmo.systems.skill as Skill
-from nmmo.task import constraint as c
 from nmmo.task.base_predicates import (
     AttainSkill,
     BuyItem,
@@ -37,11 +36,11 @@ INFREQUENT_GOAL = list(range(1, 10))
 STAY_ALIVE_GOAL = EXP_GOAL = [50, 100, 150, 200, 300, 500, 700]
 LEVEL_GOAL = list(range(2, 10))  # TODO: get config
 AGENT_NUM_GOAL = ITEM_NUM_GOAL = [1, 2, 3, 4, 5]  # competition team size: 8
-SKILLS = c.combat_skills + c.harvest_skills
-COMBAT_STYLE = c.combat_skills
-ALL_ITEM = c.armour + c.weapons + c.tools + c.ammunition + c.consumables
-EQUIP_ITEM = c.armour + c.weapons + c.tools + c.ammunition
-HARVEST_ITEM = c.weapons + c.ammunition + c.consumables
+SKILLS = Skill.COMBAT_SKILL + Skill.HARVEST_SKILL
+COMBAT_STYLE = Skill.COMBAT_SKILL
+ALL_ITEM = Item.ALL_ITEM
+EQUIP_ITEM = Item.ARMOR + Item.WEAPON + Item.TOOL + Item.AMMUNITION
+HARVEST_ITEM = Item.WEAPON + Item.AMMUNITION + Item.CONSUMABLE
 TOOL_FOR_SKILL = {
     Skill.Melee: Item.Spear,
     Skill.Range: Item.Bow,
@@ -249,7 +248,7 @@ for item in EQUIP_ITEM:
     )
 
 # consume items (ration, potion), evaluated based on the event log
-for item in c.consumables:
+for item in Item.CONSUMABLE:
   for level in LEVEL_GOAL:
     # agent task
     for quantity in ITEM_NUM_GOAL:

@@ -79,6 +79,11 @@ def create(
         env_creator_kwargs: dict = None,
         vectorization: ... = pufferlib.vectorization.Serial,
 
+        # Evaluation or replay mode
+        eval_mode: bool = False,
+        replay_mode: bool = False,
+        eval_model_path: str = None,
+
         # Policy Pool options
         policy_selector: callable = pufferlib.policy_pool.random_selector,
     ):
@@ -87,6 +92,16 @@ def create(
 
     if exp_name is None:
         exp_name = str(uuid.uuid4())[:8]
+
+    if eval_mode or replay_mode:
+        assert eval_model_path is not None, "Eval mode requires a path to checkpoints"
+
+    if replay_mode:
+        # override some configs for eval
+        config.num_envs = 1 
+        config.envs_per_worker = 1
+        config.envs_per_batch = 1
+        vectorization = pufferlib.vectorization.Serial
 
     wandb = None
     if track:
@@ -144,6 +159,7 @@ def create(
     if config.verbose:
         n_params = sum(p.numel() for p in agent.parameters() if p.requires_grad)
         print(f"Model Size: {n_params//1000} K parameters")
+        print(f"Obs size: {obs_shape[0]} -- {pool.driver_env.obs_sz}")
 
     opt_state = resume_state.get("optimizer_state_dict", None)
     if opt_state is not None:
@@ -151,8 +167,9 @@ def create(
 
     # Create policy pool
     pool_agents = num_agents * pool.envs_per_batch
+    pool_path = eval_model_path if eval_mode or replay_mode else path
     policy_pool = pufferlib.policy_pool.PolicyPool(
-        agent, pool_agents, atn_shape, device, path,
+        agent, pool_agents, atn_shape, device, pool_path,
         config.pool_kernel, policy_selector,
     )
 
@@ -556,9 +573,9 @@ def close(data):
         data.wandb.run.log_artifact(artifact)
         data.wandb.finish()
 
-def rollout(env_creator, env_kwargs, agent_creator, agent_kwargs,
+def rollout(env_creator, env_creator_kwargs, agent_creator, agent_kwargs,
         model_path=None, device='cuda', verbose=True):
-    env = env_creator(**env_kwargs)
+    env = env_creator(**env_creator_kwargs)
     if model_path is None:
         agent = agent_creator(env, **agent_kwargs)
     else:

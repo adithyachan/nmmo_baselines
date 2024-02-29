@@ -7,13 +7,20 @@ import pufferlib.emulation
 from nmmo.lib.event_code import EventCode
 import nmmo.systems.item as Item
 
+# Used for count_unique_events
+EVERY_EVENT_TO_COUNT = set([EventCode.PLAYER_KILL, EventCode.EARN_GOLD])
+
+
 class StatPostprocessor(pufferlib.emulation.Postprocessor):
     """Postprocessing actions and metrics of Neural MMO.
        Process wandb/leader board stats, and save replays.
     """
-    def __init__(self, env, agent_id, eval_mode=False):
+    def __init__(self, env, agent_id,
+                 eval_mode=False,
+                 early_stop_agent_num=0):
         super().__init__(env, is_multiagent=True, agent_id=agent_id)
         self.eval_mode = eval_mode
+        self.early_stop_agent_num = early_stop_agent_num
         self._reset_episode_stats()
 
     def reset(self, observation):
@@ -34,8 +41,6 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
         self._curriculum = defaultdict(list)
         self._combat_level = []
         self._harvest_level = []
-        self._prev_unique_count = 0
-        self._curr_unique_count = 0
 
         # for agent results
         self._time_alive = 0
@@ -55,6 +60,11 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
         # saving actions for masking/scoring
         self._last_moves = []
         self._last_price = 0
+
+        # unique event counter
+        self._experienced = set()
+        self._prev_unique_count = 0
+        self._curr_unique_count = 0
 
     def _update_stats(self, agent):
         task = self.env.agent_task_map[agent.ent_id][0]
@@ -109,9 +119,9 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
 
         # Count and store unique event counts for easier use
         realm = self.env.realm
-        log = realm.event_log.get_data(agents=[self.agent_id])
+        tick_log = realm.event_log.get_data(agents=[self.agent_id], tick=-1)  # get only the last tick
         self._prev_unique_count = self._curr_unique_count
-        self._curr_unique_count = len(extract_unique_event(log, realm.event_log.attr_to_col))
+        self._curr_unique_count += count_unique_events(tick_log, self._experienced)
 
         if not (done or truncated):
             self.epoch_length += 1
@@ -151,8 +161,25 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
             # "return" is used for ranking in the eval mode, so put the task progress here
             info["return"] = self._max_task_progress  # this is 1 if done
 
+        if self.is_env_done():
+            info["episode_done"] = True
+
         self.done = True
         return reward, done, truncated, info
+
+    def is_env_done(self):
+        # Trigger only when the episode is done, and has the lowest agent id in agents
+        if self.agent_id > min(self.env._current_agents):
+            return False
+        if len(self.env.agents) <= self.early_stop_agent_num:  # early stop
+            return True
+        if self.env.realm.tick >= self.env.config.HORIZON:  # reached the end
+            return True
+        for player_id in self.env._current_agents:  # any alive agents?
+            if player_id in self.env.realm.players:
+                return False
+        return True
+
 
 # Event processing utilities for Neural MMO.
 
@@ -175,12 +202,11 @@ KEY_EVENT = [
 ]
 
 ITEM_TYPE = {
-    "armor": [item.ITEM_TYPE_ID for item in [Item.Hat, Item.Top, Item.Bottom]],
-    "weapon": [item.ITEM_TYPE_ID for item in [Item.Spear, Item.Bow, Item.Wand]],
-    "tool": [item.ITEM_TYPE_ID for item in \
-             [Item.Axe, Item.Gloves, Item.Rod, Item.Pickaxe, Item.Chisel]],
-    "ammo": [item.ITEM_TYPE_ID for item in [Item.Runes, Item.Arrow, Item.Whetstone]],
-    "consumable": [item.ITEM_TYPE_ID for item in [Item.Potion, Item.Ration]],
+    "armor": [item.ITEM_TYPE_ID for item in Item.ARMOR],
+    "weapon": [item.ITEM_TYPE_ID for item in Item.WEAPON],
+    "tool": [item.ITEM_TYPE_ID for item in Item.TOOL],
+    "ammo": [item.ITEM_TYPE_ID for item in Item.AMMUNITION],
+    "consumable": [item.ITEM_TYPE_ID for item in Item.CONSUMABLE],
 }
 
 def process_event_log(realm, agent_list):
@@ -247,34 +273,19 @@ def process_event_log(realm, agent_list):
 
     return achieved, performed, event_cnt
 
-def extract_unique_event(log, attr_to_col):
-    if len(log) == 0:  # no event logs
-        return set()
+def count_unique_events(tick_log, experienced,
+                        every_event_to_count=EVERY_EVENT_TO_COUNT):
+    cnt_unique = 0
+    if len(tick_log) == 0:
+        return cnt_unique
 
-    # mask some columns to make the event redundant
-    cols_to_ignore = {
-        EventCode.GO_FARTHEST: ["distance"],
-        EventCode.SCORE_HIT: ["damage"],
-        # treat each (item, level) differently
-        EventCode.CONSUME_ITEM: ["quantity"],
-        # but, count each (item, level) only once
-        EventCode.HARVEST_ITEM: ["quantity"],
-        EventCode.EQUIP_ITEM: ["quantity"],
-        EventCode.LOOT_ITEM: ["quantity"],
-        EventCode.LIST_ITEM: ["quantity", "price"],
-        EventCode.BUY_ITEM: ["quantity", "price"],
-    }
+    for row in tick_log[:, 3:6]:  # only taking the event, type, level cols
+        event = tuple(row)
+        if event not in experienced:
+            experienced.add(event)
+            cnt_unique += 1
+        elif row[0] in every_event_to_count:
+            # There events are important, so count them even though they are not unique
+            cnt_unique += 1
 
-    for code, attrs in cols_to_ignore.items():
-        idx = log[:, attr_to_col["event"]] == code
-        for attr in attrs:
-            log[idx, attr_to_col[attr]] = 0
-
-    # make every EARN_GOLD events unique, from looting and selling
-    idx = log[:, attr_to_col["event"]] == EventCode.EARN_GOLD
-    log[idx, attr_to_col["number"]] = log[
-        idx, attr_to_col["tick"]
-    ].copy()  # this is a hack
-
-    # return unique events after masking
-    return set(tuple(row) for row in log[:, attr_to_col["event"]:])
+    return cnt_unique
