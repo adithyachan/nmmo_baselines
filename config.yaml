@@ -6,10 +6,13 @@ wandb:
 debug:
   train:
     num_envs: 1
-    envs_per_batch: 1
+    envs_per_batch: 1  # batching envs work?
     envs_per_worker: 1
     batch_size: 1024
-    total_timesteps: 5000
+    total_timesteps: 10000
+    pool_kernel: [0, 1]
+    checkpoint_interval: 3
+    verbose: False
 
 train:
   seed: 1

@@ -81,27 +81,16 @@ def create(
 
         # Evaluation or replay mode
         eval_mode: bool = False,
-        replay_mode: bool = False,
         eval_model_path: str = None,
 
         # Policy Pool options
-        policy_selector: callable = pufferlib.policy_pool.random_selector,
+        policy_selector: callable = None,
     ):
     if config is None:
         config = pufferlib.args.CleanPuffeRL()
 
     if exp_name is None:
         exp_name = str(uuid.uuid4())[:8]
-
-    if eval_mode or replay_mode:
-        assert eval_model_path is not None, "Eval mode requires a path to checkpoints"
-
-    if replay_mode:
-        # override some configs for eval
-        config.num_envs = 1 
-        config.envs_per_worker = 1
-        config.envs_per_batch = 1
-        vectorization = pufferlib.vectorization.Serial
 
     wandb = None
     if track:
@@ -167,7 +156,9 @@ def create(
 
     # Create policy pool
     pool_agents = num_agents * pool.envs_per_batch
-    pool_path = eval_model_path if eval_mode or replay_mode else path
+    pool_path = eval_model_path if eval_mode else path
+    if policy_selector is None:
+        policy_selector = pufferlib.policy_pool.RandomPolicySelector(config.seed)
     policy_pool = pufferlib.policy_pool.PolicyPool(
         agent, pool_agents, atn_shape, device, pool_path,
         config.pool_kernel, policy_selector,
@@ -252,6 +243,7 @@ def create(
         agent_step = agent_step,
         device = device,
         start_time = start_time,
+        eval_mode = eval_mode,
     )
 
 @pufferlib.utils.profile
@@ -272,7 +264,11 @@ def evaluate(data):
                 for policy, elo in data.policy_pool.ranker.ratings.items()},
         })
 
-    data.policy_pool.update_policies()
+    # update_policies() changes the policy id (in kernel) - policy mapping
+    # It's good for training but not wanted for replay or evaluation, so we skip it
+    if not data.eval_mode:
+        data.policy_pool.update_policies()
+
     performance = defaultdict(list)
     env_profiler = pufferlib.utils.Profiler()
     inference_profiler = pufferlib.utils.Profiler()
@@ -573,46 +569,6 @@ def close(data):
         data.wandb.run.log_artifact(artifact)
         data.wandb.finish()
 
-def rollout(env_creator, env_creator_kwargs, agent_creator, agent_kwargs,
-        model_path=None, device='cuda', verbose=True):
-    env = env_creator(**env_creator_kwargs)
-    if model_path is None:
-        agent = agent_creator(env, **agent_kwargs)
-    else:
-        agent = torch.load(model_path, map_location=device)
-
-    terminal = truncated = True
- 
-    while True:
-        if terminal or truncated:
-            if verbose:
-                print('---  Reset  ---')
-
-            ob, info = env.reset()
-            state = None
-            step = 0
-            return_val = 0
-
-        ob = torch.tensor(ob).unsqueeze(0).to(device)
-        with torch.no_grad():
-            if hasattr(agent, 'lstm'):
-                action, _, _, _, state = agent(ob, state)
-            else:
-                action, _, _, _ = agent(ob)
-
-        ob, reward, terminal, truncated, _ = env.step(action[0].item())
-        return_val += reward
-
-        chars = env.render()
-        print("\033c", end="")
-        print(chars)
-
-        if verbose:
-            print(f'Step: {step} Reward: {reward:.4f} Return: {return_val:.2f}')
-
-        time.sleep(0.5)
-        step += 1
-
 def done_training(data):
     return data.update >= data.total_updates
 
@@ -655,7 +611,16 @@ def seed_everything(seed, torch_deterministic):
     np.random.seed(seed)
     if seed is not None:
         torch.manual_seed(seed)
-    torch.backends.cudnn.deterministic = torch_deterministic
+
+    # NOTE: Deterministic torch operations tend to have worse performance than nondeterministic ones
+    # https://pytorch.org/docs/2.1/generated/torch.use_deterministic_algorithms.html
+    if torch_deterministic:
+        torch.backends.cudnn.deterministic = torch_deterministic
+        # os env var CUBLAS_WORKSPACE_CONFIG was set to :4096:8
+        # See https://docs.nvidia.com/cuda/cublas/index.html#results-reproducibility
+        torch.use_deterministic_algorithms(torch_deterministic)
+        # With torch >= 2.2, check also https://pytorch.org/docs/2.2/deterministic.html
+        # torch.utils.deterministic.fill_uninitialized_memory = torch_deterministic
 
 def unroll_nested_dict(d):
     if not isinstance(d, dict):
