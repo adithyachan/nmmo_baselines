@@ -360,7 +360,8 @@ def evaluate(data):
 
     perf = data.performance
     perf.total_uptime = int(time.time() - data.start_time)
-    perf.total_agent_steps = data.global_step
+    perf.total_global_step = data.global_step
+    perf.total_agent_steps = data.agent_step
     perf.env_time = env_profiler.elapsed
     perf.env_sps = int(agent_steps_collected / env_profiler.elapsed)
     perf.inference_time = inference_profiler.elapsed

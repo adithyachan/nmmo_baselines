@@ -95,7 +95,8 @@ def generate_replay(args, env_creator, agent_creator):
     logging.info('Replays will be saved to %s', save_dir)
 
     # Use the policy pool helper functions to create kernel (policy-agent mapping)
-    args.train.pool_kernel = pp.create_kernel(args.env.num_agents, len(policies), shuffle=False)
+    args.train.pool_kernel = pp.create_kernel(args.env.num_agents, len(policies),
+                                              shuffle_with_seed=args.train.seed)
 
     data = clean_pufferl.create(
         config=args.train,
@@ -194,3 +195,5 @@ def generate_replay(args, env_creator, agent_creator):
     logging.info('Saving replay to %s', replay_file)
     replay_helper.save(replay_file, compress=True)
     clean_pufferl.close(data)
+
+    return replay_file
