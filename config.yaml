@@ -32,9 +32,9 @@ train:
   max_grad_norm: 0.5
   target_kl: ~
 
-  num_envs: 6
-  envs_per_worker: 1
-  envs_per_batch: ~
+  num_envs: 14
+  envs_per_worker: 2
+  envs_per_batch: 6
   env_pool: True
   verbose: True
   data_dir: experiments
