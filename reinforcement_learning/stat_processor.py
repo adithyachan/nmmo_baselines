@@ -43,7 +43,6 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
         self._harvest_level = []
 
         # for agent results
-        self._time_alive = 0
         self._damage_received = 0
         self._damage_inflicted = 0
         self._ration_consumed = 0
@@ -149,8 +148,6 @@ class StatPostprocessor(pufferlib.emulation.Postprocessor):
         info["stats"]["task/pcnt_0p2_max_progress"] = self._task_with_0p2_max_progress
         info["stats"]["achieved/max_combat_level"] = max(self._combat_level)
         info["stats"]["achieved/max_harvest_level"] = max(self._harvest_level)
-        info["stats"]["achieved/team_time_alive"] = self._time_alive
-        info["stats"]["achieved/unique_events"] = self._curr_unique_count
         info["curriculum"] = self._curriculum
 
         achieved, performed, _ = process_event_log(realm, [self.agent_id])
@@ -270,6 +267,7 @@ def process_event_log(realm, agent_list):
     idx = (log[:, attr_to_col["event"]] == EventCode.PLAYER_KILL)
     achieved["achieved/agent_kill_count"] = int(sum(idx & (log[:, attr_to_col["target_ent"]] > 0)))
     achieved["achieved/npc_kill_count"] = int(sum(idx & (log[:, attr_to_col["target_ent"]] < 0)))
+    achieved["achieved/unique_events"] = count_unique_events(log, set())
 
     return achieved, performed, event_cnt
 

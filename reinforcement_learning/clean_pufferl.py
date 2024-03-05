@@ -28,13 +28,10 @@ SKIP_LOG_KEYS = ['curriculum/Task_', 'env_id']
 class Performance:
     total_uptime = 0
     total_updates = 0
+    total_global_step = 0
     total_agent_steps = 0
     epoch_time = 0
     epoch_sps = 0
-    evaluation_time = 0
-    evaluation_sps = 0
-    evaluation_memory = 0
-    evaluation_pytorch_memory = 0
     env_time = 0
     env_sps = 0
     inference_time = 0

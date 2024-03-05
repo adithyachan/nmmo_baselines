@@ -17,7 +17,6 @@ class Postprocessor(StatPostprocessor):
     def __init__(self, env, is_multiagent, agent_id,
         eval_mode=False,
         early_stop_agent_num=0,
-        sqrt_achievement_rewards=False,
         heal_bonus_weight=0,
         meander_bonus_weight=0,
         explore_bonus_weight=0,
@@ -25,7 +24,6 @@ class Postprocessor(StatPostprocessor):
     ):
         super().__init__(env, agent_id, eval_mode, early_stop_agent_num)
         self.early_stop_agent_num = early_stop_agent_num
-        self.sqrt_achievement_rewards = sqrt_achievement_rewards
         self.heal_bonus_weight = heal_bonus_weight
         self.meander_bonus_weight = meander_bonus_weight
         self.explore_bonus_weight = explore_bonus_weight
@@ -69,24 +67,25 @@ class Postprocessor(StatPostprocessor):
 
         # Add "Healing" score based on health increase and decrease due to food and water
         healing_bonus = 0
-        if self.agent_id in env.realm.players:
+        if self.heal_bonus_weight > 0 and self.agent_id in env.realm.players:
             if env.realm.players[self.agent_id].resources.health_restore > 0:
                 healing_bonus = self.heal_bonus_weight
 
+        # NOTE: This was added to fight entropy collapse when the training was unstable.
+        #       But, with the stable policy, we do not need it. So, it is commented out.
         # Add meandering bonus to encourage moving to various directions
         meander_bonus = 0
-        if len(self._last_moves) > 5:
-          move_entropy = calculate_entropy(self._last_moves[-8:])  # of last 8 moves
-          meander_bonus = self.meander_bonus_weight * (move_entropy - 1)
+        # if meander_bonus > 0 and len(self._last_moves) > 5:
+        #   move_entropy = calculate_entropy(self._last_moves[-8:])  # of last 8 moves
+        #   meander_bonus = self.meander_bonus_weight * (move_entropy - 1)
 
         # Unique event-based rewards, similar to exploration bonus
         # The number of unique events are available in self._curr_unique_count, self._prev_unique_count
-        if self.sqrt_achievement_rewards:
-            explore_bonus = math.sqrt(self._curr_unique_count) - math.sqrt(self._prev_unique_count)
-        else:
+        explore_bonus = 0
+        if self.explore_bonus_weight > 0 and self._curr_unique_count > self._prev_unique_count:
             explore_bonus = min(self.clip_unique_event,
                                 self._curr_unique_count - self._prev_unique_count)
-        explore_bonus *= self.explore_bonus_weight
+            explore_bonus *= self.explore_bonus_weight
 
         reward = reward + explore_bonus + healing_bonus + meander_bonus
 
