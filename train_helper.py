@@ -186,13 +186,15 @@ def generate_replay(args, env_creator, agent_creator):
     print('Number of agents completed the task:', num_completed)
     avg_progress = np.mean([task.progress_info['max_progress'] for task in nmmo_env.tasks])
     print(f'Average maximum progress (max=1): {avg_progress:.3f}')
-    avg_completed_tick = np.mean([task.progress_info['completed_tick']
-                                  for task in nmmo_env.tasks if task.completed])
+    avg_completed_tick = 0 
+    if num_completed > 0:
+        avg_completed_tick = np.mean([task.progress_info['completed_tick']
+                                      for task in nmmo_env.tasks if task.completed])
     print(f'Average completed tick: {avg_completed_tick:.1f}')
 
     # Save the replay file
     replay_file = os.path.join(save_dir, f'replay_{time.strftime("%Y%m%d_%H%M%S")}')
-    logging.info('Saving replay to %s', replay_file)
+    print('Saving replay to %s', replay_file)
     replay_helper.save(replay_file, compress=True)
     clean_pufferl.close(data)
 

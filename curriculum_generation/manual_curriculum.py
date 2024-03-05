@@ -54,6 +54,9 @@ TOOL_FOR_SKILL = {
 
 curriculum: List[TaskSpec] = []
 
+# The default task: stay alive for the whole episode
+curriculum.append(TaskSpec(eval_fn=TickGE, eval_fn_kwargs={"num_tick": 1024}))
+
 # explore, eat, drink, attack any agent, harvest any item, level up any skill
 #   which can happen frequently
 most_essentials = [

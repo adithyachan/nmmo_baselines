@@ -6,6 +6,11 @@ import argparse
 import numpy as np
 import polars as pl
 
+# Make the table output simpler
+pl.Config.set_tbl_hide_dataframe_shape(True)
+pl.Config.set_tbl_formatting('NOTHING')
+pl.Config.set_tbl_hide_column_data_types(True)
+
 # string matching for task names
 WEIGHT_DICT = {
     'TickGE': ('survival', 100 / 6),  # 1 survival task
@@ -121,6 +126,7 @@ def process_eval_files(policy_store_dir, eval_prefix):
     )
     summ_grp = summ_grp.sort('weighted_score', descending=True)
     summ_grp.write_csv(os.path.join(policy_store_dir, 'score_summary.tsv'), separator="\t", float_precision=6)
+    print('\nPolicy score summary, sorted by weighted_score:')
     print(summ_grp)
 
     task_df = pl.DataFrame(summ_task).sort(['mode', 'category', 'task_name', 'policy_name', 'seed'])
