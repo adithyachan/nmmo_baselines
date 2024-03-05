@@ -10,6 +10,10 @@ from nmmo.entity.entity import EntityState
 EntityId = EntityState.State.attr_name_to_col["id"]
 
 
+class Recurrent(pufferlib.models.RecurrentWrapper):
+    def __init__(self, env, policy, input_size=256, hidden_size=256, num_layers=1):
+        super().__init__(env, policy, input_size, hidden_size, num_layers)
+
 class Baseline(pufferlib.models.Policy):
   '''Improved baseline policy by JimyhZhu'''
   def __init__(self, env, input_size=256, hidden_size=256, task_size=2048):

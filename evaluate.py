@@ -46,7 +46,7 @@ class EvalConfig(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progr
         self.set('PLAYER_N', NUM_AGENTS)
         self.set('HORIZON', 1024)
         self.set('PLAYER_DEATH_FOG', None)
-        self.set('NPC_N', 128)
+        self.set('NPC_N', 256)
         self.set('RESOURCE_RESILIENT_POPULATION', 0)
         self.set('COMBAT_SPAWN_IMMUNITY', 20)
 

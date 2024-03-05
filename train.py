@@ -62,15 +62,16 @@ def setup_agent(module_name):
     env_creator = environment.make_env_creator(postprocessor_cls=agent_module.Postprocessor)
     def agent_creator(env, args):
         policy = agent_module.Policy(env, **args.policy)
-        # if args.force_recurrence or env_module.Recurrent is not None:
-        #     policy = env_module.Recurrent(env, policy, **args.recurrent)
-        #     policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)
-        # else:
-        policy = pufferlib.frameworks.cleanrl.Policy(policy)
+        if not args.no_recurrence and agent_module.Recurrent is not None:
+            policy = agent_module.Recurrent(env, policy, **args.recurrent)
+            policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)
+        else:
+            policy = pufferlib.frameworks.cleanrl.Policy(policy)
         return policy.to(args.train.device)
     init_args = {
         'policy': get_init_args(agent_module.Policy.__init__),
         'postproc': get_init_args(agent_module.Postprocessor.__init__),
+        'recurrent': get_init_args(agent_module.Recurrent.__init__),
     }
     return agent_module, env_creator, agent_creator, init_args
 
@@ -79,7 +80,6 @@ def update_args(args, mode=None):
 
     args.track = not args.no_track
     args.env.curriculum_file_path = args.curriculum
-    args.train.verbose = args.verbose
 
     vec = args.vectorization
     if vec == 'serial' or args.debug:
@@ -133,8 +133,7 @@ if __name__ == '__main__':
                         help='The index of the task to assign in the curriculum file')
     #parser.add_argument('--baseline', action='store_true', help='Baseline run')
     parser.add_argument('--vectorization', type=str, default='multiprocessing', choices='serial multiprocessing ray'.split())
-    parser.add_argument('--force-recurrence', action='store_true', help='Force model to be recurrent, regardless of defaults')
-    parser.add_argument('--verbose', action='store_true', help='Debug mode')
+    parser.add_argument('--no-recurrence', action='store_true', help='Do not use recurrence')
     if DEBUG:
         parser.add_argument('--no-track', default=True, help='Do NOT track on WandB')
         parser.add_argument('--debug', default=True, help='Debug mode')
@@ -150,7 +149,7 @@ if __name__ == '__main__':
     # Update config with environment defaults
     config.policy = {**init_args['policy'], **config.policy}
     config.postproc = {**init_args['postproc'], **config.postproc}
-    config.recurrent = {}  # {**get_init_args(env_module.Recurrent.__init__), **config.recurrent}
+    config.recurrent = {**init_args['recurrent'], **config.recurrent}
 
     # Generate argparse menu from config
     for name, sub_config in config.items():

@@ -12,7 +12,7 @@ debug:
     total_timesteps: 10000
     pool_kernel: [0, 1]
     checkpoint_interval: 3
-    verbose: False
+    verbose: True
 
 train:
   seed: 1
@@ -86,6 +86,14 @@ env:
   resilient_population: 0.2
 
 neurips23_start_kit:
+  policy:
+    input_size: 256
+    hidden_size: 256
+    task_size: 2048  # must match env task_size
+  recurrent:
+    input_size: 256
+    hidden_size: 256
+    num_layers: 1
   postproc:
     eval_mode: False
     early_stop_agent_num: 8
