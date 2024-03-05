@@ -36,11 +36,30 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("GAME_PACKS", [(ng.AgentTraining, 1)])
         self.set("CURRICULUM_FILE_PATH", env_args.curriculum_file_path)
 
-        # Game-balancing related, making npcs weaker
+        # Game-balancing related, making the game somewhat easier
+        # since all agents are on their own (no team play)
+        self.set("TERRAIN_SCATTER_EXTRA_RESOURCES", True)  # extra food/water
+
         self.set("COMBAT_DAMAGE_FORMULA", alt_combat_damage_formula)
-        self.set("NPC_LEVEL_DEFENSE", 10)
+
+        self.set("NPC_LEVEL_DEFENSE", 5)
         self.set("NPC_BASE_DAMAGE", 0)
         self.set("NPC_LEVEL_DAMAGE", 5)
+
+        self.set("PROGRESSION_MELEE_BASE_DAMAGE", 10)
+        self.set("PROGRESSION_RANGE_BASE_DAMAGE", 10)
+        self.set("PROGRESSION_MAGE_BASE_DAMAGE", 10)
+
+        self.set("EQUIPMENT_WEAPON_BASE_DAMAGE", 5)
+        self.set("EQUIPMENT_WEAPON_LEVEL_DAMAGE", 2)
+
+        self.set("EQUIPMENT_AMMUNITION_BASE_DAMAGE", 0)
+        self.set("EQUIPMENT_AMMUNITION_LEVEL_DAMAGE", 10)
+
+        self.set("EQUIPMENT_TOOL_BASE_DEFENSE", 15)
+
+        self.set("EQUIPMENT_ARMOR_LEVEL_DEFENSE", 3)
+
 
 def make_env_creator(postprocessor_cls: pufferlib.emulation.Postprocessor):
     def env_creator(*args, **kwargs):
