@@ -40,20 +40,20 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         # since all agents are on their own (no team play)
         self.set("TERRAIN_SCATTER_EXTRA_RESOURCES", True)  # extra food/water
 
-        self.set("PROGRESSION_COMBAT_XP_SCALE", 5)  # from 3
+        self.set("PROGRESSION_COMBAT_XP_SCALE", 6)  # from 3
 
         self.set("COMBAT_DAMAGE_FORMULA", alt_combat_damage_formula)
 
-        self.set("NPC_LEVEL_DEFENSE", 5)  # from 15
+        self.set("NPC_LEVEL_DEFENSE", 8)  # from 15
         self.set("NPC_BASE_DAMAGE", 0)  # from 15
-        self.set("NPC_LEVEL_DAMAGE", 5)  # from 15
+        self.set("NPC_LEVEL_DAMAGE", 8)  # from 15
 
         self.set("PROGRESSION_MELEE_BASE_DAMAGE", 10)  # from 20
         self.set("PROGRESSION_RANGE_BASE_DAMAGE", 10)
         self.set("PROGRESSION_MAGE_BASE_DAMAGE", 10)
 
         self.set("EQUIPMENT_WEAPON_BASE_DAMAGE", 5)  # from 15
-        self.set("EQUIPMENT_WEAPON_LEVEL_DAMAGE", 2)  # from 15
+        self.set("EQUIPMENT_WEAPON_LEVEL_DAMAGE", 5)  # from 15
 
         self.set("EQUIPMENT_AMMUNITION_BASE_DAMAGE", 0)  # from 15
         self.set("EQUIPMENT_AMMUNITION_LEVEL_DAMAGE", 10)  # from 15
