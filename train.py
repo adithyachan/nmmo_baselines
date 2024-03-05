@@ -176,6 +176,10 @@ if __name__ == '__main__':
     clean_parser.parse_args(sys.argv[1:])
 
     args = update_args(args, mode=args['mode'])
+
+    if args.train.env_pool is True:
+        logging.warning('Env_pool is enabled. This may increase training speed but break determinism.')
+
     if args.track:
         args.exp_name = init_wandb(args).id
     else:

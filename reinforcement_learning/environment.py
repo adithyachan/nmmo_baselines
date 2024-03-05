@@ -9,6 +9,10 @@ import nmmo
 import nmmo.core.config as nc
 import nmmo.core.game_api as ng
 
+
+def alt_combat_damage_formula(offense, defense, multiplier, minimum_proportion):
+    return int(max(multiplier * offense - defense, offense * minimum_proportion))
+
 class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progression,
              nc.Item, nc.Equipment, nc.Profession, nc.Exchange):
     '''Configuration for Neural MMO.'''
@@ -31,6 +35,12 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
 
         self.set("GAME_PACKS", [(ng.AgentTraining, 1)])
         self.set("CURRICULUM_FILE_PATH", env_args.curriculum_file_path)
+
+        # Game-balancing related, making npcs weaker
+        self.set("COMBAT_DAMAGE_FORMULA", alt_combat_damage_formula)
+        self.set("NPC_LEVEL_DEFENSE", 10)
+        self.set("NPC_BASE_DAMAGE", 0)
+        self.set("NPC_LEVEL_DAMAGE", 5)
 
 def make_env_creator(postprocessor_cls: pufferlib.emulation.Postprocessor):
     def env_creator(*args, **kwargs):
