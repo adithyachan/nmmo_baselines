@@ -76,10 +76,13 @@ def make_env_creator(task_file, mode):
     return env_creator
 
 def make_agent_creator():
+    # NOTE: Assuming all policies are recurrent, which may not be true
     policy_args = get_init_args(default_learner.Policy.__init__)
+    recurrent_args = get_init_args(default_learner.Recurrent.__init__)
     def agent_creator(env):
         policy = default_learner.Policy(env, **policy_args)
-        policy = pufferlib.frameworks.cleanrl.Policy(policy)
+        policy = default_learner.Recurrent(env, policy, **recurrent_args)
+        policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)
         return policy.to(get_eval_config()['device'])
     return agent_creator
 
