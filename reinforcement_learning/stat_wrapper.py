@@ -15,6 +15,7 @@ class BaseStatWrapper(BaseParallelWrapper):
         stat_prefix=None,
     ):
         super().__init__(env)
+        self.env_done = False
         self.early_stop_agent_num = early_stop_agent_num
         self.eval_mode = eval_mode
         self._reset_episode_stats()
@@ -38,7 +39,7 @@ class BaseStatWrapper(BaseParallelWrapper):
 
     @property
     def agents(self):
-        return self.env.agents
+        return [] if self.env_done else self.env.agents
 
     def reset(self, **kwargs):
         '''Called at the start of each episode'''
@@ -97,34 +98,6 @@ class BaseStatWrapper(BaseParallelWrapper):
             for agent_id in self.env.possible_agents
         }
 
-    def _update_stats(self, agent):
-        task = self.env.agent_task_map[agent.ent_id][0]
-        # For each task spec, record whether its max progress and reward count
-        self._curriculum[task.spec_name].append((task._max_progress, task.reward_signal_count))
-        self._max_task_progress = task._max_progress
-        if task.reward_signal_count >= 2:
-            self._task_with_2_reward_signal = 1.0
-        if task._max_progress >= 0.2:
-            self._task_with_0p2_max_progress = 1.0
-        if task.completed:
-            self._task_completed = 1.0
-
-        if agent.damage.val > 0:
-            self._cod_attacked = 1.0
-        elif agent.food.val == 0:
-            self._cod_starved = 1.0
-        elif agent.water.val == 0:
-            self._cod_dehydrated = 1.0
-
-        self._combat_level.append(agent.attack_level)
-        self._harvest_level.append(max(
-            agent.fishing_level.val,
-            agent.herbalism_level.val,
-            agent.prospecting_level.val,
-            agent.carving_level.val,
-            agent.alchemy_level.val,
-        ))
-
     def _process_stats_and_early_stop(self, agent_id, reward, terminated, truncated, info):
         '''Update stats + info and save replays.'''
         # Remove the task from info. Curriculum info is processed in _update_stats()
@@ -161,9 +134,14 @@ class BaseStatWrapper(BaseParallelWrapper):
             info['return'] = self._max_task_progress  # this is 1 if done
 
         # Cause of Deaths
-        info['stats']['cod/attacked'] = 1.0 if agent.damage.val > 0 else 0.0
-        info['stats']['cod/starved'] = 1.0 if agent.food.val == 0 else 0.0
-        info['stats']['cod/dehydrated'] = 1.0 if agent.water.val == 0 else 0.0
+        if terminated:
+            info['stats']['cod/attacked'] = 1.0 if agent.damage.val > 0 else 0.0
+            info['stats']['cod/starved'] = 1.0 if agent.food.val == 0 else 0.0
+            info['stats']['cod/dehydrated'] = 1.0 if agent.water.val == 0 else 0.0
+        else:
+            info['stats']['cod/attacked'] = 0
+            info['stats']['cod/starved'] = 0
+            info['stats']['cod/dehydrated'] = 0
 
         # Task-related stats
         task = self.env.agent_task_map[agent.ent_id][0]  # consider only the first task
@@ -278,10 +256,11 @@ def process_event_log(realm, agent_list):
     idx = np.in1d(log[:, attr_to_col['event']],
                   [EventCode.HARVEST_ITEM, EventCode.LOOT_ITEM, EventCode.BUY_ITEM])
     if sum(idx) > 0:
-      for item_type, item_ids in ITEM_TYPE.items():
-          idx_item = np.in1d(log[idx, attr_to_col['item_type']], item_ids)
-          achieved['achieved/max_' + item_type + '_level'] = \
-            int(max(log[idx][idx_item, attr_to_col['level']])) if sum(idx_item) > 0 else 1  # min level = 1
+        for item_type, item_ids in ITEM_TYPE.items():
+            idx_item = np.in1d(log[idx, attr_to_col['item_type']], item_ids)
+            if sum(idx_item) > 0:
+                achieved['achieved/max_' + item_type + '_level'] = \
+                    int(max(log[idx][idx_item, attr_to_col['level']]))
 
     # other notable achievements
     idx = (log[:, attr_to_col['event']] == EventCode.PLAYER_KILL)
