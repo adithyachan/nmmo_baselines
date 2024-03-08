@@ -44,7 +44,7 @@ train:
   batch_rows: 128
   bptt_horizon: 8
   vf_clip_coef: 0.1
-  compile: True
+  compile: False
   compile_mode: reduce-overhead
 
 sweep:

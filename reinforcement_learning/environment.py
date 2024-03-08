@@ -2,8 +2,8 @@ from argparse import Namespace
 
 import pufferlib
 import pufferlib.emulation
-import pufferlib.environments
-import pufferlib.wrappers
+
+from pettingzoo.utils.wrappers.base_parallel import BaseParallelWrapper
 
 import nmmo 
 import nmmo.core.config as nc
@@ -63,13 +63,11 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("EQUIPMENT_ARMOR_LEVEL_DEFENSE", 3)  # from 10
 
 
-def make_env_creator(postprocessor_cls: pufferlib.emulation.Postprocessor):
+def make_env_creator(postprocessor_cls: BaseParallelWrapper):
     def env_creator(*args, **kwargs):
         """Create an environment."""
         env = nmmo.Env(Config(kwargs['env']))  # args.env is provided as kwargs
-        env = pufferlib.emulation.PettingZooPufferEnv(env,
-            postprocessor_cls=postprocessor_cls,
-            postprocessor_kwargs=kwargs['postproc'],
-        )
+        env = postprocessor_cls(env, **kwargs['postproc'])
+        env = pufferlib.emulation.PettingZooPufferEnv(env)
         return env
     return env_creator

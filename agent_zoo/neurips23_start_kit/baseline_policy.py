@@ -2,12 +2,16 @@ import torch
 import torch.nn.functional as F
 
 import pufferlib
-import pufferlib.emulation
 import pufferlib.models
+import pufferlib.emulation
+from pufferlib.emulation import unpack_batched_obs
 
 from nmmo.entity.entity import EntityState
 
 EntityId = EntityState.State.attr_name_to_col["id"]
+
+# NOTE: a workaround for the torch.complier problem. TODO: try torch 2.2
+#unpack_batched_obs = torch.compiler.disable(unpack_batched_obs)
 
 
 class Recurrent(pufferlib.models.RecurrentWrapper):
@@ -32,8 +36,7 @@ class Baseline(pufferlib.models.Policy):
     self.value_head = torch.nn.Linear(hidden_size, 1)
 
   def encode_observations(self, flat_observations):
-    env_outputs = pufferlib.emulation.unpack_batched_obs(
-        flat_observations, self.unflatten_context)
+    env_outputs = unpack_batched_obs(flat_observations, self.unflatten_context)
     tile = self.tile_encoder(env_outputs["Tile"])
     player_embeddings, my_agent = self.player_encoder(
         env_outputs["Entity"], env_outputs["AgentId"][:, 0]
@@ -48,6 +51,8 @@ class Baseline(pufferlib.models.Policy):
     obs = torch.cat([tile, my_agent, pooled_player_embeddings, pooled_item_embeddings, market, task], dim=-1)
     obs = self.proj_fc(obs)
 
+    # Pad the embeddings to make them the same size to the action_decoder
+    # This is a workaround for the fact that the action_decoder expects the same number of actions including no-op
     embeddings = [player_embeddings, item_embeddings, market_embeddings]
     padded_embeddings = []
     for embedding in embeddings:
@@ -256,10 +261,12 @@ class ActionDecoder(torch.nn.Module):
       mask = None
       mask = action_targets[key]
       embs = embeddings.get(key)
-      if embs is not None and embs.shape[1] != mask.shape[1]:
-        b, _, f = embs.shape
-        zeros = torch.zeros([b, 1, f], dtype=embs.dtype, device=embs.device)
-        embs = torch.cat([embs, zeros], dim=1)
+
+      # NOTE: SHOULD not hit this
+      # if embs is not None and embs.shape[1] != mask.shape[1]:
+      #   b, _, f = embs.shape
+      #   zeros = torch.zeros([b, 1, f], dtype=embs.dtype, device=embs.device)
+      #   embs = torch.cat([embs, zeros], dim=1)
 
       action = self.apply_layer(layer, embs, mask, hidden)
       actions.append(action)
