@@ -154,12 +154,12 @@ class BaseStatWrapper(BaseParallelWrapper):
 
         # Max combat/harvest level achieved
         info['stats']['achieved/max_combat_level'] = agent.attack_level
-        info['stats']['achieved/max_harvest_ammunition'] = max(
+        info['stats']['achieved/max_harvest_skill_ammo'] = max(
             agent.prospecting_level.val,
             agent.carving_level.val,
             agent.alchemy_level.val,
         )
-        info['stats']['achieved/max_harvest_consumables'] = max(
+        info['stats']['achieved/max_harvest_skill_consum'] = max(
             agent.fishing_level.val,
             agent.herbalism_level.val,
         )
