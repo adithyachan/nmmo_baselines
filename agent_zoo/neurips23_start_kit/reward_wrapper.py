@@ -76,6 +76,6 @@ class Postprocessor(BaseStatWrapper):
             explore_bonus = min(self.clip_unique_event, uniq['curr_count'] - uniq['prev_count'])
             explore_bonus *= self.explore_bonus_weight
 
-        reward = reward + healing_bonus + explore_bonus
+        reward += healing_bonus + explore_bonus
 
         return reward, terminated, truncated, info

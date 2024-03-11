@@ -129,9 +129,6 @@ class BaseStatWrapper(BaseParallelWrapper):
         info['length'] = realm.tick
 
         info['return'] = self.cum_rewards[agent_id]
-        if self.eval_mode:
-            # 'return' is used for ranking in the eval mode, so put the task progress here
-            info['return'] = self._max_task_progress  # this is 1 if done
 
         # Cause of Deaths
         if terminated:
@@ -144,13 +141,17 @@ class BaseStatWrapper(BaseParallelWrapper):
             info['stats']['cod/dehydrated'] = 0
 
         # Task-related stats
-        task = self.env.agent_task_map[agent.ent_id][0]  # consider only the first task
+        task = self.env.agent_task_map[agent_id][0]  # consider only the first task
         info['stats']['task/completed'] = 1.0 if task.completed else 0.0
         info['stats']['task/pcnt_2_reward_signal'] = 1.0 if task.reward_signal_count >= 2 else 0.0
         info['stats']['task/pcnt_0p2_max_progress'] = 1.0 if task._max_progress >= 0.2 else 0.0
-        info['curricululm'] = {
+        info['curriculum'] = {
             task.spec_name: (task._max_progress, task.reward_signal_count)
         }
+
+        if self.eval_mode:
+            # 'return' is used for ranking in the eval mode, so put the task progress here
+            info['return'] = task._max_progress  # this is 1 if done
 
         # Max combat/harvest level achieved
         info['stats']['achieved/max_combat_level'] = agent.attack_level

@@ -32,8 +32,8 @@ train:
   max_grad_norm: 0.5
   target_kl: ~
 
-  num_envs: 14
-  envs_per_worker: 2
+  num_envs: 15
+  envs_per_worker: 1
   envs_per_batch: 6
   env_pool: True
   verbose: True
