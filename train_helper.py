@@ -85,7 +85,9 @@ def sweep(args, env_creator, agent_creator):
 
     wandb.agent(sweep_id, main, count=20)
 
-def generate_replay(args, env_creator, agent_creator):
+def generate_replay(args, env_creator, agent_creator,
+                    stop_when_all_complete_task=True,
+                    seed=None):
     assert args.eval_model_path is not None, 'eval_model_path must be set for replay generation'
     policies = pp.get_policy_names(args.eval_model_path)
     assert len(policies) > 0, 'No policies found in eval_model_path'
@@ -93,6 +95,14 @@ def generate_replay(args, env_creator, agent_creator):
 
     save_dir = args.eval_model_path
     logging.info('Replays will be saved to %s', save_dir)
+
+    if seed is not None:
+        args.train.seed = seed
+    logging.info('Seed: %d', args.train.seed)
+
+    # Set the postproc for replay
+    args.postproc.eval_mode = True
+    args.postproc.early_stop_agent_num = 0
 
     # Use the policy pool helper functions to create kernel (policy-agent mapping)
     args.train.pool_kernel = pp.create_kernel(args.env.num_agents, len(policies),
@@ -112,7 +122,7 @@ def generate_replay(args, env_creator, agent_creator):
     # Set up the replay helper
     o, r, d, t, i, env_id, mask = data.pool.recv()  # This resets the env
     replay_helper = FileReplayHelper()
-    nmmo_env = data.pool.multi_envs[0].envs[0].env
+    nmmo_env = data.pool.multi_envs[0].envs[0].env.env
     nmmo_env.realm.record_replay(replay_helper)
 
     # Sanity checks for replay generation
@@ -135,8 +145,16 @@ def generate_replay(args, env_creator, agent_creator):
         select_task = task_with_embedding[args.task_to_assign]
         tasks = make_task_from_spec(nmmo_env.possible_agents,
                                     [select_task] * len(nmmo_env.possible_agents))
-        nmmo_env.tasks = tasks  # this is a hack
-        print(f'Seed: {args.train.seed}, task: {nmmo_env.tasks[0].spec_name}\n')
+
+        # Reassign the task to the agents
+        nmmo_env.tasks = tasks
+        nmmo_env._map_task_to_agent()  # update agent_task_map
+        for agent_id in nmmo_env.possible_agents:
+            # task_spec must have tasks for all agents, otherwise it will cause an error
+            task_embedding = nmmo_env.agent_task_map[agent_id][0].embedding
+            nmmo_env.obs[agent_id].gym_obs.reset(task_embedding)
+
+        print(f'All agents are assigned: {nmmo_env.tasks[0].spec_name}\n')
 
     # Generate the replay
     replay_helper.reset()
@@ -193,8 +211,11 @@ def generate_replay(args, env_creator, agent_creator):
     print(f'Average completed tick: {avg_completed_tick:.1f}')
 
     # Save the replay file
-    replay_file = os.path.join(save_dir, f'replay_{time.strftime("%Y%m%d_%H%M%S")}')
-    print('Saving replay to %s', replay_file)
+    replay_file = f'replay_seed_{args.train.seed}_'
+    if args.task_to_assign is not None:
+        replay_file += f'task_{args.task_to_assign}_'
+    replay_file = os.path.join(save_dir, replay_file + time.strftime('%Y%m%d_%H%M%S'))
+    print(f'Saving replay to {replay_file}')
     replay_helper.save(replay_file, compress=True)
     clean_pufferl.close(data)
 

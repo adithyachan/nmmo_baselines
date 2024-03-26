@@ -75,6 +75,31 @@ def setup_agent(module_name):
     }
     return agent_module, env_creator, agent_creator, init_args
 
+def combine_config_args(parser, args, config):
+    clean_parser = argparse.ArgumentParser(parents=[parser])
+    for name, sub_config in config.items():
+        args[name] = {}
+        for key, value in sub_config.items():
+            data_key = f'{name}.{key}'
+            cli_key = f'--{data_key}'.replace('_', '-')
+            if isinstance(value, bool) and value is False:
+                parser.add_argument(cli_key, default=value, action='store_true')
+                clean_parser.add_argument(cli_key, default=value, action='store_true')
+            elif isinstance(value, bool) and value is True:
+                data_key = f'{name}.no_{key}'
+                cli_key = f'--{data_key}'.replace('_', '-')
+                parser.add_argument(cli_key, default=value, action='store_false')
+                clean_parser.add_argument(cli_key, default=value, action='store_false')
+            else:
+                parser.add_argument(cli_key, default=value, type=type(value))
+                clean_parser.add_argument(cli_key, default=value, metavar='', type=type(value))
+
+            args[name][key] = getattr(parser.parse_known_args()[0], data_key)
+        args[name] = pufferlib.namespace(**args[name])
+
+    clean_parser.parse_args(sys.argv[1:])
+    return args
+
 def update_args(args, mode=None):
     args = pufferlib.namespace(**args)
 
@@ -141,7 +166,6 @@ if __name__ == '__main__':
         parser.add_argument('--no-track', action='store_true', help='Do NOT track on WandB')
         parser.add_argument('--debug', action='store_true', help='Debug mode')
 
-    clean_parser = argparse.ArgumentParser(parents=[parser])
     args = parser.parse_known_args()[0].__dict__
     config = load_from_config(args['agent'], debug=args.get('debug', False))
     agent_module, env_creator, agent_creator, init_args = setup_agent(args['agent'])
@@ -152,29 +176,9 @@ if __name__ == '__main__':
     config.recurrent = {**init_args['recurrent'], **config.recurrent}
 
     # Generate argparse menu from config
-    for name, sub_config in config.items():
-        args[name] = {}
-        for key, value in sub_config.items():
-            data_key = f'{name}.{key}'
-            cli_key = f'--{data_key}'.replace('_', '-')
-            if isinstance(value, bool) and value is False:
-                action = 'store_false'
-                parser.add_argument(cli_key, default=value, action='store_true')
-                clean_parser.add_argument(cli_key, default=value, action='store_true')
-            elif isinstance(value, bool) and value is True:
-                data_key = f'{name}.no_{key}'
-                cli_key = f'--{data_key}'.replace('_', '-')
-                parser.add_argument(cli_key, default=value, action='store_false')
-                clean_parser.add_argument(cli_key, default=value, action='store_false')
-            else:
-                parser.add_argument(cli_key, default=value, type=type(value))
-                clean_parser.add_argument(cli_key, default=value, metavar='', type=type(value))
+    args = combine_config_args(parser, args, config)
 
-            args[name][key] = getattr(parser.parse_known_args()[0], data_key)
-        args[name] = pufferlib.namespace(**args[name])
-
-    clean_parser.parse_args(sys.argv[1:])
-
+    # Perform mode-specific updates
     args = update_args(args, mode=args['mode'])
 
     if args.train.env_pool is True:

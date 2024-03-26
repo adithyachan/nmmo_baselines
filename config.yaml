@@ -37,7 +37,7 @@ train:
   envs_per_batch: 6
   env_pool: True
   verbose: True
-  data_dir: experiments
+  data_dir: runs
   checkpoint_interval: 200
   pool_kernel: [0]
   batch_size: 32768

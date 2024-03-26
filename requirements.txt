@@ -1,8 +1,8 @@
 accelerate==0.27.2
 gymnasium==0.29.1
-nmmo==2.0.4
+#nmmo  # https://github.com/kywch/nmmo-environment
 polars
-pufferlib  # CHECK ME: requires 0.7.2 or later  TODO: fix the version
+pufferlib==0.7.3
 psutil
 torch==2.1.0
 transformers==4.37.2
