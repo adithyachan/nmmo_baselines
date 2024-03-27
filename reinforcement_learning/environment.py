@@ -63,11 +63,11 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("EQUIPMENT_ARMOR_LEVEL_DEFENSE", 3)  # from 10
 
 
-def make_env_creator(postprocessor_cls: BaseParallelWrapper):
+def make_env_creator(reward_wrapper_cls: BaseParallelWrapper):
     def env_creator(*args, **kwargs):
         """Create an environment."""
         env = nmmo.Env(Config(kwargs['env']))  # args.env is provided as kwargs
-        env = postprocessor_cls(env, **kwargs['postproc'])
+        env = reward_wrapper_cls(env, **kwargs['reward_wrapper'])
         env = pufferlib.emulation.PettingZooPufferEnv(env)
         return env
     return env_creator

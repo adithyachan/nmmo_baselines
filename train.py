@@ -21,7 +21,7 @@ BASELINE_CURRICULUM = "curriculum_generation/curriculum_with_embedding.pkl"
 def load_from_config(agent, debug=False):
     with open('config.yaml') as f:
         config = yaml.safe_load(f)
-    default_keys = 'agent_zoo env train policy recurrent sweep_metadata sweep_metric sweep wandb postproc'.split()
+    default_keys = 'agent_zoo env train policy recurrent sweep_metadata sweep_metric sweep wandb reward_wrapper'.split()
     defaults = {key: config.get(key, {}) for key in default_keys}
 
     debug_config = config.get('debug', {}) if debug else {}
@@ -59,7 +59,9 @@ def setup_agent(module_name):
         agent_module = importlib.import_module(f'agent_zoo.{module_name}')
     except ModuleNotFoundError:
         raise ValueError(f'Agent module {module_name} not found under the agent_zoo directory.')
-    env_creator = environment.make_env_creator(postprocessor_cls=agent_module.Postprocessor)
+
+    env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper)
+
     def agent_creator(env, args):
         policy = agent_module.Policy(env, **args.policy)
         if not args.no_recurrence and agent_module.Recurrent is not None:
@@ -68,11 +70,13 @@ def setup_agent(module_name):
         else:
             policy = pufferlib.frameworks.cleanrl.Policy(policy)
         return policy.to(args.train.device)
+
     init_args = {
         'policy': get_init_args(agent_module.Policy.__init__),
-        'postproc': get_init_args(agent_module.Postprocessor.__init__),
         'recurrent': get_init_args(agent_module.Recurrent.__init__),
+        'reward_wrapper': get_init_args(agent_module.RewardWrapper.__init__),
     }
+
     return agent_module, env_creator, agent_creator, init_args
 
 def combine_config_args(parser, args, config):
@@ -137,8 +141,8 @@ def update_args(args, mode=None):
         # Disable env pool - see the comment about next_lstm_state in clean_pufferl.evaluate()
         args.train.env_pool = False
         args.env.resilient_population = 0
-        args.postproc.eval_mode = True
-        args.postproc.early_stop_agent_num = 0
+        args.reward_wrapper.eval_mode = True
+        args.reward_wrapper.early_stop_agent_num = 0
 
     if mode == 'replay':
         args.train.num_envs = args.train.envs_per_worker = args.train.envs_per_batch = 1
@@ -172,8 +176,8 @@ if __name__ == '__main__':
 
     # Update config with environment defaults
     config.policy = {**init_args['policy'], **config.policy}
-    config.postproc = {**init_args['postproc'], **config.postproc}
     config.recurrent = {**init_args['recurrent'], **config.recurrent}
+    config.reward_wrapper = {**init_args['reward_wrapper'], **config.reward_wrapper}
 
     # Generate argparse menu from config
     args = combine_config_args(parser, args, config)

@@ -35,8 +35,8 @@ def init_wandb(args, resume=True):
             'env': args.env,
             'agent_zoo': args.agent,
             'policy': args.policy,
-            'postproc': args.postproc,
             'recurrent': args.recurrent,
+            'reward_wrapper': args.reward_wrapper,
         },
         'name': args.exp_name,
         'monitor_gym': True,
@@ -53,7 +53,7 @@ def train(args, env_creator, agent_creator):
         agent_creator=agent_creator,
         agent_kwargs={'args': args},
         env_creator=env_creator,
-        env_creator_kwargs={'env': args.env, 'postproc': args.postproc},
+        env_creator_kwargs={'env': args.env, 'reward_wrapper': args.reward_wrapper},
         vectorization=args.vectorization,
         exp_name=args.exp_name,
         track=args.track,
@@ -100,9 +100,14 @@ def generate_replay(args, env_creator, agent_creator,
         args.train.seed = seed
     logging.info('Seed: %d', args.train.seed)
 
-    # Set the postproc for replay
-    args.postproc.eval_mode = True
-    args.postproc.early_stop_agent_num = 0
+    # Set the train config for replay
+    args.train.num_envs = 1
+    args.train.envs_per_batch = 1
+    args.train.envs_per_worker = 1
+
+    # Set the reward wrapper for replay
+    args.reward_wrapper.eval_mode = True
+    args.reward_wrapper.early_stop_agent_num = 0
 
     # Use the policy pool helper functions to create kernel (policy-agent mapping)
     args.train.pool_kernel = pp.create_kernel(args.env.num_agents, len(policies),
@@ -113,7 +118,7 @@ def generate_replay(args, env_creator, agent_creator,
         agent_creator=agent_creator,
         agent_kwargs={'args': args},
         env_creator=env_creator,
-        env_creator_kwargs={'env': args.env, 'postproc': args.postproc},
+        env_creator_kwargs={'env': args.env, 'reward_wrapper': args.reward_wrapper},
         eval_mode=True,
         eval_model_path=args.eval_model_path,
         policy_selector=pp.AllPolicySelector(args.train.seed),

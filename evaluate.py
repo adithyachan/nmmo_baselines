@@ -67,11 +67,11 @@ class EvalConfig(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progr
 def make_env_creator(task_file, mode):
     def env_creator(*args, **kwargs):  # dummy args
         env = nmmo.Env(EvalConfig(task_file, mode))
-        # postprocessor is for the learner, which is not used in evaluation
-        env = pufferlib.emulation.PettingZooPufferEnv(env,
-            postprocessor_cls=default_learner.Postprocessor,
-            postprocessor_kwargs={'eval_mode': True, 'early_stop_agent_num': 0,},
+        # Reward wrapper is for the learner, which is not used in evaluation
+        env = default_learner.RewardWrapper(
+            env, **{'eval_mode': True, 'early_stop_agent_num': 0,}
         )
+        env = pufferlib.emulation.PettingZooPufferEnv(env)
         return env
     return env_creator
 
@@ -79,7 +79,7 @@ def make_agent_creator():
     # NOTE: Assuming all policies are recurrent, which may not be true
     policy_args = get_init_args(default_learner.Policy.__init__)
     recurrent_args = get_init_args(default_learner.Recurrent.__init__)
-    def agent_creator(env):
+    def agent_creator(env, args=None):
         policy = default_learner.Policy(env, **policy_args)
         policy = default_learner.Recurrent(env, policy, **recurrent_args)
         policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)

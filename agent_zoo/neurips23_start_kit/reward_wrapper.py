@@ -1,7 +1,7 @@
 from reinforcement_learning.stat_wrapper import BaseStatWrapper
 
 
-class Postprocessor(BaseStatWrapper):
+class RewardWrapper(BaseStatWrapper):
     def __init__(
         # BaseStatWrapper args
         self,

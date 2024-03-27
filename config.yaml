@@ -94,7 +94,7 @@ neurips23_start_kit:
     input_size: 256
     hidden_size: 256
     num_layers: 1
-  postproc:
+  reward_wrapper:
     eval_mode: False
     early_stop_agent_num: 8
     heal_bonus_weight: 0.03
