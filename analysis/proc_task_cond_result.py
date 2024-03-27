@@ -5,9 +5,9 @@ from collections import defaultdict
 import dill
 import numpy as np
 import polars as pl
+from tqdm import tqdm
 
 from nmmo.lib.event_code import EventCode
-from nmmo.lib.event_log import EventAttr
 from nmmo.systems.item import ALL_ITEM
 from nmmo.systems.skill import COMBAT_SKILL, HARVEST_SKILL
 
@@ -51,18 +51,18 @@ def extract_task_name(task_str):
 
 def gather_agent_events_by_task(data_dir):
     data_by_task = defaultdict(list)
-    for file_name in os.listdir(data_dir):
-        if file_name.endswith('.metadata.pkl'):
-            data = dill.load(open(f'{data_dir}/{file_name}', 'rb'))
-            final_tick = data['tick']
+    file_list = [f for f in os.listdir(data_dir) if f.endswith('.metadata.pkl')]
+    for file_name in tqdm(file_list):
+        data = dill.load(open(f'{data_dir}/{file_name}', 'rb'))
+        final_tick = data['tick']
 
-            for agent_id, vals in data['event_stats'].items():
-                task_name = extract_task_name(data['task'][agent_id])
+        for agent_id, vals in data['event_stats'].items():
+            task_name = extract_task_name(data['task'][agent_id])
 
-                # Agent survived until the end
-                if EventCode.AGENT_CULLED not in vals:
-                    vals[(EventCode.AGENT_CULLED,)] = final_tick
-                data_by_task[task_name].append(vals)
+            # Agent survived until the end
+            if EventCode.AGENT_CULLED not in vals:
+                vals[(EventCode.AGENT_CULLED,)] = final_tick
+            data_by_task[task_name].append(vals)
 
     return data_by_task
 
