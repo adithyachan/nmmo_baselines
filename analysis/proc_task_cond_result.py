@@ -121,11 +121,9 @@ def get_event_stats(task_name, task_data):
     return results
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description='Process replay data')
-    # parser.add_argument('policy_store_dir', type=str, help='Path to the policy directory')
-    # args = parser.parse_args()
-
-    args = argparse.Namespace(policy_store_dir='pol_task_cond2')
+    parser = argparse.ArgumentParser(description='Process replay data')
+    parser.add_argument('policy_store_dir', type=str, help='Path to the policy directory')
+    args = parser.parse_args()
 
     # Gather the event data by tasks, across multiple replays
     data_by_task = gather_agent_events_by_task(args.policy_store_dir)
