@@ -25,7 +25,6 @@ class BaseStatWrapper(BaseParallelWrapper):
         """Called before observations are returned from the environment
         Use this to define custom featurizers. Changing the space itself requires you to
         define the observation space again (i.e. Gym.spaces.Dict(gym.spaces....))"""
-        # NOTE: nmmo minigame obs is mapping proxy, which doesn't work with pufferlib flatten
         return agent_obs
 
     def action(self, agent_id, agent_atn):
