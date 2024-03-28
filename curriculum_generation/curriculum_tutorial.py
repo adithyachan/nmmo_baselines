@@ -41,6 +41,7 @@ for event_code in essential_events:
 ##############################################################################
 # Create training tasks using custom evaluation functions
 
+
 def PracticeEating(gs, subject):
     """The progress, the max of which is 1, should
     * increase small for each eating
@@ -55,11 +56,14 @@ def PracticeEating(gs, subject):
         progress += 0.3
     return norm(progress)  # norm is a helper function to normalize the value to [0, 1]
 
+
 curriculum.append(TaskSpec(eval_fn=PracticeEating, eval_fn_kwargs={}))
+
 
 # You can also use pre-built eval functions to define your own eval functions
 def PracticeInventoryManagement(gs, subject, space, num_tick):
     return norm(InventorySpaceGE(gs, subject, space) * TickGE(gs, subject, num_tick))
+
 
 for space in [2, 4, 8]:
     curriculum.append(
@@ -74,6 +78,7 @@ if __name__ == "__main__":
     # Import the custom curriculum
     print("------------------------------------------------------------")
     import curriculum_tutorial  # which is this file
+
     CURRICULUM = curriculum_tutorial.curriculum
     print("The number of training tasks in the curriculum:", len(CURRICULUM))
 
@@ -96,6 +101,7 @@ if __name__ == "__main__":
     CURRICULUM_FILE_PATH = "custom_curriculum_with_embedding.pkl"
     with open(CURRICULUM_FILE_PATH, "wb") as f:
         import dill
+
         dill.dump(CURRICULUM, f)
     print("All training tasks are picklable.")
 
@@ -105,6 +111,7 @@ if __name__ == "__main__":
     print("------------------------------------------------------------")
     print("Generating the task spec with embedding file ...")
     from task_encoder import TaskEncoder
+
     LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
 
     # Get the task embeddings for the training tasks and save to file

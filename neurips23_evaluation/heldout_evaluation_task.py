@@ -1,9 +1,23 @@
 """Held-out evaluation tasks for NeurIPS 2023 competition."""
+
 from typing import List
 
 from nmmo.systems import skill as s
 from nmmo.systems import item as i
-from nmmo.task.base_predicates import *
+from nmmo.task.base_predicates import (
+    AttainSkill,
+    ConsumeItem,
+    CountEvent,
+    DefeatEntity,
+    EarnGold,
+    EquipItem,
+    FullyArmed,
+    HarvestItem,
+    HoardGold,
+    MakeProfit,
+    OccupyTile,
+    TickGE,
+)
 from nmmo.task.task_spec import TaskSpec, check_task_spec
 
 
@@ -16,9 +30,7 @@ GOLD_GOAL = 100
 curriculum: List[TaskSpec] = []
 
 # Survive to the end
-curriculum.append(
-    TaskSpec(eval_fn=TickGE, eval_fn_kwargs={"num_tick": 1024})
-)
+curriculum.append(TaskSpec(eval_fn=TickGE, eval_fn_kwargs={"num_tick": 1024}))
 
 # Kill 20 players/npcs
 curriculum.append(
@@ -117,34 +129,20 @@ curriculum.append(
 )
 
 # Earn 100 gold (revenue), just by trading
-curriculum.append(
-    TaskSpec(
-        eval_fn=EarnGold,
-        eval_fn_kwargs={"amount": GOLD_GOAL}
-    )
-)
+curriculum.append(TaskSpec(eval_fn=EarnGold, eval_fn_kwargs={"amount": GOLD_GOAL}))
 
 # Own and protect 100 gold by any means (looting or trading)
-curriculum.append(
-    TaskSpec(
-        eval_fn=HoardGold,
-        eval_fn_kwargs={"amount": GOLD_GOAL}
-    )
-)
+curriculum.append(TaskSpec(eval_fn=HoardGold, eval_fn_kwargs={"amount": GOLD_GOAL}))
 
 # Make profit of 100 gold by any means
-curriculum.append(
-    TaskSpec(
-        eval_fn=MakeProfit,
-        eval_fn_kwargs={"amount": GOLD_GOAL}
-    )
-)
+curriculum.append(TaskSpec(eval_fn=MakeProfit, eval_fn_kwargs={"amount": GOLD_GOAL}))
 
 
 if __name__ == "__main__":
     # Import the custom curriculum
     print("------------------------------------------------------------")
     from neurips23_evaluation import heldout_evaluation_task  # which is this file
+
     CURRICULUM = heldout_evaluation_task.curriculum
     print("The number of training tasks in the curriculum:", len(CURRICULUM))
 
@@ -166,6 +164,7 @@ if __name__ == "__main__":
     print("Checking if the training tasks are picklable ...")
     with open(CURRICULUM_FILE_PATH, "wb") as f:
         import dill
+
         dill.dump(CURRICULUM, f)
     print("All training tasks are picklable.")
 
@@ -175,6 +174,7 @@ if __name__ == "__main__":
     print("------------------------------------------------------------")
     print("Generating the task spec with embedding file ...")
     from curriculum_generation.task_encoder import TaskEncoder
+
     LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
 
     # Get the task embeddings for the training tasks and save to file

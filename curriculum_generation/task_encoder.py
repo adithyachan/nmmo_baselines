@@ -14,17 +14,23 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 def extract_module_fn(module: ModuleType):
-  fn_dict = {}
-  for name, fn in module.__dict__.items():
-    if inspect.isfunction(fn) and not inspect.isbuiltin(fn) and not name.startswith("_"):
-      fn_dict[name] = fn
-  return fn_dict
+    fn_dict = {}
+    for name, fn in module.__dict__.items():
+        if inspect.isfunction(fn) and not inspect.isbuiltin(fn) and not name.startswith("_"):
+            fn_dict[name] = fn
+    return fn_dict
 
 
 class TaskEncoder:
     """A class for encoding tasks into embeddings using a pretrained model."""
-    
-    def __init__(self, checkpoint: str, context: ModuleType, batch_size=2, tmp_file_path="tmp_task_encoder.pkl"):
+
+    def __init__(
+        self,
+        checkpoint: str,
+        context: ModuleType,
+        batch_size=2,
+        tmp_file_path="tmp_task_encoder.pkl",
+    ):
         """
         Initialize the TaskEncoder.
 
@@ -38,13 +44,13 @@ class TaskEncoder:
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, trust_remote_code=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         if self.device == "cuda":
-            self.model = AutoModelForCausalLM.from_pretrained(checkpoint,
-                                                              trust_remote_code=True,
-                                                              device_map="auto",
-                                                              torch_dtype=torch.bfloat16)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                checkpoint, trust_remote_code=True, device_map="auto", torch_dtype=torch.bfloat16
+            )
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(checkpoint,
-                                                              trust_remote_code=True).to(self.device)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                checkpoint, trust_remote_code=True
+            ).to(self.device)
         self.model.eval()
         self.batch_size = batch_size
         self.temp_file_path = tmp_file_path
@@ -70,10 +76,14 @@ class TaskEncoder:
         all_embeddings = []
         with torch.no_grad():
             for i in tqdm(range(0, len(prompts), self.batch_size)):
-                batch = prompts[i: i + self.batch_size]
-                tokens = self.tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(self.device)
+                batch = prompts[i : i + self.batch_size]
+                tokens = self.tokenizer(
+                    batch, return_tensors="pt", padding=True, truncation=True
+                ).to(self.device)
                 outputs = self.model(**tokens, output_hidden_states=True)
-                embeddings = outputs.hidden_states[-1].mean(dim=1).detach().cpu().to(torch.float32).numpy()
+                embeddings = (
+                    outputs.hidden_states[-1].mean(dim=1).detach().cpu().to(torch.float32).numpy()
+                )
                 all_embeddings.extend(embeddings.astype(np.float16))
         return all_embeddings
 
@@ -88,8 +98,18 @@ class TaskEncoder:
         A tuple with source code and dependencies of eval_fn.
         """
         eval_src = inspect.getsource(eval_fn)
-        deps_fns = [node.func.id for node in ast.walk(ast.parse(eval_src)) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)]
-        deps_src = "\n".join([inspect.getsource(self._fn_dict[fn_name]) for fn_name in deps_fns if fn_name in self._fn_dict])
+        deps_fns = [
+            node.func.id
+            for node in ast.walk(ast.parse(eval_src))
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        ]
+        deps_src = "\n".join(
+            [
+                inspect.getsource(self._fn_dict[fn_name])
+                for fn_name in deps_fns
+                if fn_name in self._fn_dict
+            ]
+        )
         return eval_src, deps_src
 
     def _construct_prompt(self, reward_to, eval_fn, eval_fn_kwargs) -> str:
@@ -126,7 +146,12 @@ class TaskEncoder:
         Updated task specifications with embeddings.
         """
         assert self.model is not None, "Model has been unloaded. Re-initialize the TaskEncoder."
-        prompts = [self._construct_prompt(single_spec.reward_to, single_spec.eval_fn, single_spec.eval_fn_kwargs) for single_spec in task_spec_list]
+        prompts = [
+            self._construct_prompt(
+                single_spec.reward_to, single_spec.eval_fn, single_spec.eval_fn_kwargs
+            )
+            for single_spec in task_spec_list
+        ]
         embeddings = self._get_embedding(prompts)
 
         for single_spec, embedding in zip(task_spec_list, embeddings):
@@ -155,11 +180,9 @@ class TaskEncoder:
 
 if __name__ == "__main__":
     import curriculum_generation.manual_curriculum as curriculum
+
     LLM_CHECKPOINT = "deepseek-ai/deepseek-coder-1.3b-instruct"
     CURRICULUM_FILE_PATH = "curriculum_generation/curriculum_with_embedding.pkl"
 
     with TaskEncoder(LLM_CHECKPOINT, curriculum, batch_size=6) as task_encoder:
-        task_encoder.get_task_embedding(
-            curriculum.curriculum,
-            save_to_file=CURRICULUM_FILE_PATH
-        )
+        task_encoder.get_task_embedding(curriculum.curriculum, save_to_file=CURRICULUM_FILE_PATH)

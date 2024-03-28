@@ -5,7 +5,7 @@ import pufferlib.emulation
 
 from pettingzoo.utils.wrappers.base_parallel import BaseParallelWrapper
 
-import nmmo 
+import nmmo
 import nmmo.core.config as nc
 import nmmo.core.game_api as ng
 
@@ -13,9 +13,21 @@ import nmmo.core.game_api as ng
 def alt_combat_damage_formula(offense, defense, multiplier, minimum_proportion):
     return int(max(multiplier * offense - defense, offense * minimum_proportion))
 
-class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progression,
-             nc.Item, nc.Equipment, nc.Profession, nc.Exchange):
-    '''Configuration for Neural MMO.'''
+
+class Config(
+    nc.Medium,
+    nc.Terrain,
+    nc.Resource,
+    nc.Combat,
+    nc.NPC,
+    nc.Progression,
+    nc.Item,
+    nc.Equipment,
+    nc.Profession,
+    nc.Exchange,
+):
+    """Configuration for Neural MMO."""
+
     def __init__(self, env_args: Namespace):
         super().__init__()
 
@@ -25,8 +37,11 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("PLAYER_N", env_args.num_agents)
         self.set("HORIZON", env_args.max_episode_length)
         self.set("MAP_N", env_args.num_maps)
-        self.set("PLAYER_DEATH_FOG", env_args.death_fog_tick if isinstance(env_args.death_fog_tick, int) else None)
-        self.set("PATH_MAPS", f'{env_args.maps_path}/{env_args.map_size}/')
+        self.set(
+            "PLAYER_DEATH_FOG",
+            env_args.death_fog_tick if isinstance(env_args.death_fog_tick, int) else None,
+        )
+        self.set("PATH_MAPS", f"{env_args.maps_path}/{env_args.map_size}/")
         self.set("MAP_CENTER", env_args.map_size)
         self.set("NPC_N", env_args.num_npcs)
         self.set("TASK_EMBED_DIM", env_args.task_size)
@@ -66,8 +81,9 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
 def make_env_creator(reward_wrapper_cls: BaseParallelWrapper):
     def env_creator(*args, **kwargs):
         """Create an environment."""
-        env = nmmo.Env(Config(kwargs['env']))  # args.env is provided as kwargs
-        env = reward_wrapper_cls(env, **kwargs['reward_wrapper'])
+        env = nmmo.Env(Config(kwargs["env"]))  # args.env is provided as kwargs
+        env = reward_wrapper_cls(env, **kwargs["reward_wrapper"])
         env = pufferlib.emulation.PettingZooPufferEnv(env)
         return env
+
     return env_creator
