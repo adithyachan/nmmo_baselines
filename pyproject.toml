@@ -17,7 +17,7 @@ dependencies = [
     "polars",
     "pufferlib[nmmo]==0.7.3",
     "psutil",
-    "torch>=2.1",
+    "torch",
     "transformers==4.37.2",
     "wandb",
 ]
