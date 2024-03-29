@@ -1,5 +1,5 @@
 #!/bin/bash
 
 python -u -m train \
---runs-dir=/fsx/proj-nmmo/runs/ \
+--train.data_dir=/weka/proj-nmmo/runs/ \
 "${@}"

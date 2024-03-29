@@ -9,20 +9,20 @@
 #SBATCH --partition=g40x
 #SBATCH --nodes=1
 #SBATCH --gpus=1
-#SBATCH --cpus-per-gpu=6
+#SBATCH --cpus-per-gpu=8
 #__SBATCH --mem=80G
-#SBATCH --chdir=/fsx/proj-nmmo/nmmo-baselines/
+#SBATCH --chdir=/weka/proj-nmmo/nmmo-baselines/
 #SBATCH --output=sbatch/%j.log
 #SBATCH --error=sbatch/%j.log
 #SBATCH --requeue
-#SBATCH --export=PYTHONUNBUFFERED=1,WANDB_BASE_URL="https://stability.wandb.io",WANDB_DIR=/fsx/proj-nmmo/tmp/wandb,WANDB_CONFIG_DIR=/fsx/proj-nmmo/tmp/wandb
+#SBATCH --export=PYTHONUNBUFFERED=1,WANDB_DIR=/weka/proj-nmmo/tmp/wandb,WANDB_CONFIG_DIR=/weka/proj-nmmo/tmp/wandb
 
-source /fsx/proj-nmmo/venv/bin/activate && \
+source /weka/proj-nmmo/venv/bin/activate && \
 ulimit -c unlimited && \
 ulimit -s unlimited && \
 ulimit -a
 
-wandb login --host=https://stability.wandb.io
+wandb login --cloud
 
 # Extract run_name from the arguments
 run_name=""

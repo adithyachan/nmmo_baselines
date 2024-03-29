@@ -1,5 +1,5 @@
 wandb:
-  project: nmmo
+  project: nmmo-baselines
   entity: kywch
   group: ~
 
