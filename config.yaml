@@ -74,11 +74,11 @@ sweep:
 
 env:
   num_agents: 128
-  num_npcs: 128
+  num_npcs: 256
   max_episode_length: 1024
   maps_path: 'maps/train/'
   map_size: 128
-  num_maps: 128
+  num_maps: 256
   map_force_generation: False
   death_fog_tick: ~
   task_size: 2048
@@ -110,8 +110,8 @@ yaofeng:
     num_maps: 1024
     resilient_population: 0
   train:
-    ppo_update_epochs: 2
-    ppo_learning_rate: 0.0001
+    update_epochs: 2
+    learning_rate: 1.0e-4
   recurrent:
     num_layers: 2
   reward_wrapper:
@@ -123,3 +123,13 @@ yaofeng:
     custom_bonus_scale: 0.1
     disable_give: True
     donot_attack_dangerous_npc: True
+
+takeru:
+  env:
+    maps_path: 'maps/train_takeru/'
+    num_maps: 1280
+    resilient_population: 0
+  train:
+    update_epochs: 2
+  reward_wrapper:
+    early_stop_agent_num: 0
