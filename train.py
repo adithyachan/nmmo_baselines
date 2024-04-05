@@ -21,7 +21,9 @@ BASELINE_CURRICULUM = "curriculum_generation/curriculum_with_embedding.pkl"
 def load_from_config(agent, debug=False):
     with open("config.yaml") as f:
         config = yaml.safe_load(f)
-    default_keys = "agent_zoo env train policy recurrent sweep_metadata sweep_metric sweep wandb reward_wrapper".split()
+    default_keys = (
+        "env train policy recurrent sweep_metadata sweep_metric sweep wandb reward_wrapper".split()
+    )
     defaults = {key: config.get(key, {}) for key in default_keys}
 
     debug_config = config.get("debug", {}) if debug else {}
@@ -64,10 +66,12 @@ def setup_agent(module_name):
 
     env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper)
 
+    recurrent_policy = getattr(agent_module, "Recurrent", None)
+
     def agent_creator(env, args):
         policy = agent_module.Policy(env, **args.policy)
-        if not args.no_recurrence and agent_module.Recurrent is not None:
-            policy = agent_module.Recurrent(env, policy, **args.recurrent)
+        if not args.no_recurrence and recurrent_policy is not None:
+            policy = recurrent_policy(env, policy, **args.recurrent)
             policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)
         else:
             policy = pufferlib.frameworks.cleanrl.Policy(policy)
@@ -75,7 +79,9 @@ def setup_agent(module_name):
 
     init_args = {
         "policy": get_init_args(agent_module.Policy.__init__),
-        "recurrent": get_init_args(agent_module.Recurrent.__init__),
+        "recurrent": get_init_args(agent_module.Recurrent.__init__)
+        if recurrent_policy is not None
+        else {},
         "reward_wrapper": get_init_args(agent_module.RewardWrapper.__init__),
     }
 

@@ -85,17 +85,41 @@ env:
   spawn_immunity: 20
   resilient_population: 0.2
 
+policy:
+  input_size: 256
+  hidden_size: 256
+  task_size: 2048  # must match env task_size
+
+recurrent:
+  input_size: 256
+  hidden_size: 256
+  num_layers: 1
+
+reward_wrapper:
+  eval_mode: False
+  early_stop_agent_num: 8
+
 neurips23_start_kit:
-  policy:
-    input_size: 256
-    hidden_size: 256
-    task_size: 2048  # must match env task_size
-  recurrent:
-    input_size: 256
-    hidden_size: 256
-    num_layers: 1
   reward_wrapper:
-    eval_mode: False
-    early_stop_agent_num: 8
     heal_bonus_weight: 0.03
     explore_bonus_weight: 0.01
+
+yaofeng:
+  env:
+    maps_path: 'maps/train_yaofeng/'
+    num_maps: 1024
+    resilient_population: 0
+  train:
+    ppo_update_epochs: 2
+    ppo_learning_rate: 0.0001
+  recurrent:
+    num_layers: 2
+  reward_wrapper:
+    hp_bonus_weight: 0.03
+    exp_bonus_weight: 0.002
+    defense_bonus_weight: 0.04
+    attack_bonus_weight: 0.0
+    gold_bonus_weight: 0.001
+    custom_bonus_scale: 0.1
+    disable_give: True
+    donot_attack_dangerous_npc: True

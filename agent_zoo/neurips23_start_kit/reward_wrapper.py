@@ -78,7 +78,7 @@ class RewardWrapper(BaseStatWrapper):
         reward += healing_bonus + explore_bonus
 
         # NOTE: Disable death reward. This is temporarly for task-conditioning exp.
-        if terminated is True:
-            reward = 0
+        # if terminated is True:
+        #     reward = 0
 
         return reward, terminated, truncated, info
