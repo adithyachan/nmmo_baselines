@@ -130,6 +130,10 @@ takeru:
     num_maps: 1280
     resilient_population: 0
   train:
-    update_epochs: 2
+    update_epochs: 1
+  recurrent:
+    num_layers: 0
   reward_wrapper:
     early_stop_agent_num: 0
+    explore_bonus_weight: 0.01
+    disable_give: True
