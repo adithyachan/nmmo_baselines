@@ -137,3 +137,4 @@ takeru:
     early_stop_agent_num: 0
     explore_bonus_weight: 0.01
     disable_give: True
+    donot_attack_dangerous_npc: True

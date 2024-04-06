@@ -1,4 +1,10 @@
+import numpy as np
+
+from nmmo.entity.entity import EntityState
+
 from reinforcement_learning.stat_wrapper import BaseStatWrapper
+
+EntityAttr = EntityState.State.attr_name_to_col
 
 
 class RewardWrapper(BaseStatWrapper):
@@ -13,12 +19,14 @@ class RewardWrapper(BaseStatWrapper):
         explore_bonus_weight=0,
         clip_unique_event=3,
         disable_give=True,
+        donot_attack_dangerous_npc=True,
     ):
         super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix)
         self.stat_prefix = stat_prefix
         self.explore_bonus_weight = explore_bonus_weight
         self.clip_unique_event = clip_unique_event
         self.disable_give = disable_give
+        self.donot_attack_dangerous_npc = donot_attack_dangerous_npc
 
     def observation(self, agent_id, agent_obs):
         """Called before observations are returned from the environment
@@ -31,6 +39,11 @@ class RewardWrapper(BaseStatWrapper):
             agent_obs["ActionTargets"]["Give"]["Target"][:-1] = 0
             agent_obs["ActionTargets"]["GiveGold"]["Target"][:-1] = 0
             agent_obs["ActionTargets"]["GiveGold"]["Price"][1:] = 0
+
+        if self.donot_attack_dangerous_npc is True:
+            # npc type: 1: passive, 2: neutral, 3: hostile
+            dangerours_npc_idxs = np.where(agent_obs["Entity"][:, EntityAttr["npc_type"]] > 1)
+            agent_obs["ActionTargets"]["Attack"]["Target"][dangerours_npc_idxs] = 0
 
         return agent_obs
 
