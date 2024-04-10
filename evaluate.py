@@ -17,7 +17,7 @@ import agent_zoo.neurips23_start_kit as default_learner
 from train import get_init_args
 
 NUM_AGENTS = 128
-EVAL_TASK_FILE = "neurips23_evaluation/sample_eval_task_with_embedding.pkl"
+EVAL_TASK_FILE = "neurips23_evaluation/heldout_task_with_embedding.pkl"
 NUM_PVE_EVAL_EPISODE = 32
 NUM_PVP_EVAL_EPISODE = 200  # TODO: cannot do more due to memory leak
 

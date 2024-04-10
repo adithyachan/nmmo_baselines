@@ -39,8 +39,8 @@ def get_task_weight(task_name):
     return "etc", 0
 
 
-def get_summary_dict(vals, key):
-    progress = vals if key == "length" else [v[0] for v in vals]
+def get_summary_dict(progress, key):
+    # progress = vals if key == "length" else [v[0] for v in vals]
     summ = {"count": len(progress), "mean": np.mean(progress), "median": np.median(progress)}
 
     if key == "length":
