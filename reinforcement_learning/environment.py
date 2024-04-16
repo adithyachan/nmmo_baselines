@@ -10,10 +10,6 @@ import nmmo.core.config as nc
 import nmmo.core.game_api as ng
 
 
-def alt_combat_damage_formula(offense, defense, multiplier, minimum_proportion):
-    return int(max(multiplier * offense - defense, offense * minimum_proportion))
-
-
 class Config(
     nc.Medium,
     nc.Terrain,
