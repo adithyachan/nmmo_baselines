@@ -1,17 +1,18 @@
 from argparse import Namespace
 
-import pufferlib
-import pufferlib.emulation
-
-from pettingzoo.utils.wrappers.base_parallel import BaseParallelWrapper
-
-import nmmo 
+import nmmo
 import nmmo.core.config as nc
 import nmmo.core.game_api as ng
+import pufferlib
+import pufferlib.emulation
+from pettingzoo.utils.wrappers.base_parallel import BaseParallelWrapper
+from syllabus.core import PettingZooMultiProcessingSyncWrapper
+from syllabus_task_wrapper import NMMOTaskWrapper
 
 
 def alt_combat_damage_formula(offense, defense, multiplier, minimum_proportion):
     return int(max(multiplier * offense - defense, offense * minimum_proportion))
+
 
 class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progression,
              nc.Item, nc.Equipment, nc.Profession, nc.Exchange):
@@ -63,11 +64,24 @@ class Config(nc.Medium, nc.Terrain, nc.Resource, nc.Combat, nc.NPC, nc.Progressi
         self.set("EQUIPMENT_ARMOR_LEVEL_DEFENSE", 3)  # from 10
 
 
-def make_env_creator(reward_wrapper_cls: BaseParallelWrapper):
+def make_env_creator(reward_wrapper_cls: BaseParallelWrapper, task_wrapper=False, curriculum=None):
     def env_creator(*args, **kwargs):
         """Create an environment."""
         env = nmmo.Env(Config(kwargs['env']))  # args.env is provided as kwargs
+        # TODO: make nmmo conform to the newer PettingZoo API and remove below line
         env = reward_wrapper_cls(env, **kwargs['reward_wrapper'])
+
+        # Add Syllabus task wrapper
+        if task_wrapper or curriculum is not None:
+            env = NMMOTaskWrapper(env)
+
+        # Use curriculum if provided
+        if curriculum is not None:
+            # Add Syllabus Sync Wrapper
+            env = PettingZooMultiProcessingSyncWrapper(
+                env, curriculum.get_components(), update_on_step=False, task_space=env.task_space,
+            )
+
         env = pufferlib.emulation.PettingZooPufferEnv(env)
         return env
     return env_creator
