@@ -204,28 +204,6 @@ if __name__ == '__main__':
         'recurrent': get_init_args(agent_module.Recurrent.__init__),
         'reward_wrapper': get_init_args(agent_module.RewardWrapper.__init__),
     }
-    sample_env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper, task_wrapper=True)
-
-    # Set up curriculum
-    curriculum = None
-    if args.syllabus:
-        sample_env = sample_env_creator(env=args.env, postproc=args.postproc)
-        task_space = NMMOTaskWrapper.task_space
-        curriculum = create_sequential_curriculum(task_space)
-        curriculum = MultiagentSharedCurriculumWrapper(curriculum, sample_env.possible_agents)
-        curriculum = make_multiprocessing_curriculum(curriculum)
-    else:
-        args.env.curriculum_file_path = args.curriculum
-
-    env_creator = environment.make_env_creator(
-        postprocessor_cls=agent_module.Postprocessor, curriculum=curriculum
-    )
-    eval_env_creator = environment.make_eval_env_creator(
-        postprocessor_cls=agent_module.Postprocessor, stat_prefix="eval", curriculum=curriculum
-    )
-    eval_env_creator = None
-
-    agent_creator = setup_agent(agent_module)
 
     # Update config with environment defaults
     config.policy = {**init_args['policy'], **config.policy}
@@ -237,6 +215,23 @@ if __name__ == '__main__':
 
     # Perform mode-specific updates
     args = update_args(args, mode=args['mode'])
+
+    sample_env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper, task_wrapper=True)
+
+    # Set up curriculum
+    curriculum = None
+    if args.syllabus:
+        sample_env = sample_env_creator(env=args.env, reward_wrapper=args.reward_wrapper)
+        task_space = NMMOTaskWrapper.task_space
+        curriculum = create_sequential_curriculum(task_space)
+        curriculum = MultiagentSharedCurriculumWrapper(curriculum, sample_env.possible_agents)
+        curriculum = make_multiprocessing_curriculum(curriculum)
+    else:
+        args.env.curriculum_file_path = args.curriculum
+
+    env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper, curriculum=curriculum)
+
+    agent_creator = setup_agent(agent_module)
 
     if args.train.env_pool is True:
         logging.warning('Env_pool is enabled. This may increase training speed but break determinism.')

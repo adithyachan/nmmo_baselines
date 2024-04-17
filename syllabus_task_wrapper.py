@@ -10,8 +10,8 @@ from nmmo.systems import skill as nmmo_skill
 from nmmo.systems.item import Item
 from nmmo.systems.skill import Skill
 from nmmo.task import base_predicates as bp
-from nmmo.task import constraint
-from nmmo.task import constraint as c
+from nmmo.systems import item as i
+from nmmo.entity import entity as e
 from nmmo.task import task_api, task_spec
 from nmmo.task.base_predicates import AllDead, StayAlive
 from nmmo.task.game_state import GameState
@@ -22,7 +22,6 @@ from syllabus.task_space import TaskSpace
 
 import nmmo
 from nmmo.lib import utils
-from sample_tasks import tasks
 
 
 class NMMOTaskWrapper(PettingZooTaskWrapper):
@@ -87,7 +86,6 @@ class NMMOTaskWrapper(PettingZooTaskWrapper):
             task = new_task
             self.task = new_task
             new_task_specs = self.task_list[task]
-            print(new_task_specs.eval_fn)
             self.task_fn = task_spec.make_task_from_spec(
                 self.env.possible_agents, [new_task_specs] * len(self.env.possible_agents)
             )
@@ -125,15 +123,15 @@ class NMMOTaskWrapper(PettingZooTaskWrapper):
 
         # Stage 2 - Harvest Equiptment
         stage2 = []
-        stage2.append(task_spec.TaskSpec(bp.HarvestItem, {'item': c.ammunition, 'level': 1, 'quantity': 20}, reward_to='agent'))
-        stage2.append(task_spec.TaskSpec(bp.HarvestItem, {'item': c.weapons, 'level': 1, 'quantity': 20}, reward_to='agent'))
+        stage2.append(task_spec.TaskSpec(bp.HarvestItem, {'item': i.Ammunition, 'level': 1, 'quantity': 20}, reward_to='agent'))
+        stage2.append(task_spec.TaskSpec(bp.HarvestItem, {'item': i.Weapon, 'level': 1, 'quantity': 20}, reward_to='agent'))
 
         # # Stage 3 - Equip Weapons
         stage3 = []
-        stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': c.weapons, 'level': 1, 'num_agent': 1}, reward_to='agent'))
-        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': c.ammunition, 'level': 1, 'num_agent': 1}, reward_to='agent'))
-        stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': c.weapons, 'level': 1, 'num_agent': 8}, reward_to='agent'))
-        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': c.ammunition, 'level': 1, 'num_agent': 8}, reward_to='agent'))
+        stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.Weapon, 'level': 1, 'num_agent': 1}, reward_to='agent'))
+        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.ammunition, 'level': 1, 'num_agent': 1}, reward_to='agent'))
+        stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.Weapon, 'level': 1, 'num_agent': 8}, reward_to='agent'))
+        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.ammunition, 'level': 1, 'num_agent': 8}, reward_to='agent'))
 
         # # Stage 4 - Fight
         stage4 = []
@@ -186,11 +184,11 @@ class NMMOTaskWrapper(PettingZooTaskWrapper):
         AGENT_NUM_GOAL = [1]    # competition team size: 8
         ITEM_NUM_GOAL = AGENT_NUM_GOAL
         TEAM_ITEM_GOAL = [1, 3, 5, 7, 10, 15, 20]
-        SKILLS = c.combat_skills + c.harvest_skills
-        COMBAT_STYLE = c.combat_skills
-        ALL_ITEM = c.armour + c.weapons + c.tools + c.ammunition + c.consumables
-        EQUIP_ITEM = c.armour + c.weapons + c.tools + c.ammunition
-        HARVEST_ITEM = c.weapons + c.ammunition + c.consumables
+        SKILLS = e.combat_skills + e.harvest_skills
+        COMBAT_STYLE = e.combat_skills
+        ALL_ITEM = i.armour + i.weapons + i.tools + i.ammunition + i.consumables
+        EQUIP_ITEM = i.armour + i.weapons + i.tools + i.ammunition
+        HARVEST_ITEM = i.weapons + i.ammunition + i.consumables
 
         """ task_specs is a list of tuple (reward_to, predicate class, kwargs)
 
@@ -297,7 +295,7 @@ class NMMOTaskWrapper(PettingZooTaskWrapper):
                 for num_agent in AGENT_NUM_GOAL:
                     if level + num_agent <= 6 or num_agent == 1:    # heuristic prune
                         task_specs.append(('team', bp.DefeatEntity,
-                                         {'agent_type': agent_type, 'level': level, 'num_agent': num_agent}))
+                                          {'agent_type': agent_type, 'level': level, 'num_agent': num_agent}))
 
         # hoarding gold -- evaluated on the current gold
         for amount in EVENT_NUMBER_GOAL:
@@ -360,7 +358,7 @@ class NMMOTaskWrapper(PettingZooTaskWrapper):
                                           {'item': item, 'level': level, 'num_agent': num_agent}))
 
         # consume items (ration, potion), evaluated based on the event log
-        for item in c.consumables:
+        for item in i.consumables:
             for level in LEVEL_GOAL:
                 # agent task
                 for quantity in ITEM_NUM_GOAL:
