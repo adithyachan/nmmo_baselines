@@ -1,5 +1,7 @@
+# ruff: noqa: E722, F841
+
 # Copied from: https://github.com/PufferAI/PufferLib/blob/0.7/clean_pufferl.py
-from pdb import set_trace as T
+# from pdb import set_trace as T
 import os
 import random
 import time
@@ -21,7 +23,7 @@ import pufferlib.vectorization
 import pufferlib.frameworks.cleanrl
 import pufferlib.policy_pool
 
-SKIP_LOG_KEYS = ['curriculum/Task_', 'env_id']
+SKIP_LOG_KEYS = ["curriculum/Task_", "env_id"]
 
 
 @pufferlib.dataclass
@@ -42,6 +44,7 @@ class Performance:
     train_pytorch_memory = 0
     misc_time = 0
 
+
 @pufferlib.dataclass
 class Losses:
     policy_loss = 0
@@ -52,6 +55,7 @@ class Losses:
     clipfrac = 0
     explained_variance = 0
 
+
 @pufferlib.dataclass
 class Charts:
     global_step = 0
@@ -60,29 +64,26 @@ class Charts:
     agent_step = 0
     agent_SPS = 0
 
+
 def create(
-        self: object = None,
-        config: pufferlib.namespace = None,
-        exp_name: str = None,
-        track: bool = False,
-
-        # Agent
-        agent: nn.Module = None,
-        agent_creator: callable = None,
-        agent_kwargs: dict = None,
-
-        # Environment
-        env_creator: callable = None,
-        env_creator_kwargs: dict = None,
-        vectorization: ... = pufferlib.vectorization.Serial,
-
-        # Evaluation or replay mode
-        eval_mode: bool = False,
-        eval_model_path: str = None,
-
-        # Policy Pool options
-        policy_selector: callable = None,
-    ):
+    self: object = None,
+    config: pufferlib.namespace = None,
+    exp_name: str = None,
+    track: bool = False,
+    # Agent
+    agent: nn.Module = None,
+    agent_creator: callable = None,
+    agent_kwargs: dict = None,
+    # Environment
+    env_creator: callable = None,
+    env_creator_kwargs: dict = None,
+    vectorization: ... = pufferlib.vectorization.Serial,
+    # Evaluation or replay mode
+    eval_mode: bool = False,
+    eval_model_path: str = None,
+    # Policy Pool options
+    policy_selector: callable = None,
+):
     if config is None:
         config = pufferlib.args.CleanPuffeRL()
 
@@ -121,24 +122,26 @@ def create(
     resume_state = {}
     path = os.path.join(config.data_dir, exp_name)
     if os.path.exists(path):
-        trainer_path = os.path.join(path, 'trainer_state.pt')
+        trainer_path = os.path.join(path, "trainer_state.pt")
         resume_state = torch.load(trainer_path)
         model_path = os.path.join(path, resume_state["model_name"])
         agent = torch.load(model_path, map_location=device)
-        print(f'Resumed from update {resume_state["update"]} '
-              f'with policy {resume_state["model_name"]}')
+        print(
+            f'Resumed from update {resume_state["update"]} '
+            f'with policy {resume_state["model_name"]}'
+        )
     else:
         agent = pufferlib.emulation.make_object(
-            agent, agent_creator, [pool.driver_env], agent_kwargs)
+            agent, agent_creator, [pool.driver_env], agent_kwargs
+        )
 
     global_step = resume_state.get("global_step", 0)
     agent_step = resume_state.get("agent_step", 0)
     update = resume_state.get("update", 0)
 
-    optimizer = optim.Adam(agent.parameters(),
-        lr=config.learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=config.learning_rate, eps=1e-5)
 
-    uncompiled_agent = agent # Needed to save the model
+    uncompiled_agent = agent  # Needed to save the model
     if config.compile:
         agent = torch.compile(agent, mode=config.compile_mode)
 
@@ -157,8 +160,13 @@ def create(
     if policy_selector is None:
         policy_selector = pufferlib.policy_pool.RandomPolicySelector(config.seed)
     policy_pool = pufferlib.policy_pool.PolicyPool(
-        agent, pool_agents, atn_shape, device, pool_path,
-        config.pool_kernel, policy_selector,
+        agent,
+        pool_agents,
+        atn_shape,
+        device,
+        pool_path,
+        config.pool_kernel,
+        policy_selector,
     )
 
     # Allocate Storage
@@ -166,19 +174,19 @@ def create(
     next_lstm_state = []
     pool.async_reset(config.seed)
     next_lstm_state = None
-    if hasattr(agent, 'lstm'):
+    if hasattr(agent, "lstm"):
         shape = (agent.lstm.num_layers, total_agents, agent.lstm.hidden_size)
         next_lstm_state = (
             torch.zeros(shape).to(device),
             torch.zeros(shape).to(device),
         )
-    obs=torch.zeros(config.batch_size + 1, *obs_shape)
-    actions=torch.zeros(config.batch_size + 1, *atn_shape, dtype=int)
-    logprobs=torch.zeros(config.batch_size + 1)
-    rewards=torch.zeros(config.batch_size + 1)
-    dones=torch.zeros(config.batch_size + 1)
-    truncateds=torch.zeros(config.batch_size + 1)
-    values=torch.zeros(config.batch_size + 1)
+    obs = torch.zeros(config.batch_size + 1, *obs_shape)
+    actions = torch.zeros(config.batch_size + 1, *atn_shape, dtype=int)
+    logprobs = torch.zeros(config.batch_size + 1)
+    rewards = torch.zeros(config.batch_size + 1)
+    dones = torch.zeros(config.batch_size + 1)
+    truncateds = torch.zeros(config.batch_size + 1)
+    values = torch.zeros(config.batch_size + 1)
 
     obs_ary = np.asarray(obs)
     actions_ary = np.asarray(actions)
@@ -190,83 +198,85 @@ def create(
 
     storage_profiler.stop()
 
-    #"charts/actions": wandb.Histogram(b_actions.cpu().numpy()),
+    # "charts/actions": wandb.Histogram(b_actions.cpu().numpy()),
     init_performance = pufferlib.namespace(
-        init_time = time.time() - start_time,
-        init_env_time = init_profiler.elapsed,
-        init_env_memory = init_profiler.memory,
-        tensor_memory = storage_profiler.memory,
-        tensor_pytorch_memory = storage_profiler.pytorch_memory,
+        init_time=time.time() - start_time,
+        init_env_time=init_profiler.elapsed,
+        init_env_memory=init_profiler.memory,
+        tensor_memory=storage_profiler.memory,
+        tensor_pytorch_memory=storage_profiler.pytorch_memory,
     )
- 
-    return pufferlib.namespace(self,
+
+    return pufferlib.namespace(
+        self,
         # Agent, Optimizer, and Environment
         config=config,
-        pool = pool,
-        agent = agent,
-        uncompiled_agent = uncompiled_agent,
-        optimizer = optimizer,
-        policy_pool = policy_pool,
-
+        pool=pool,
+        agent=agent,
+        uncompiled_agent=uncompiled_agent,
+        optimizer=optimizer,
+        policy_pool=policy_pool,
         # Logging
-        exp_name = exp_name,
-        wandb = wandb,
+        exp_name=exp_name,
+        wandb=wandb,
         learning_rate=config.learning_rate,
-        losses = Losses(),
-        init_performance = init_performance,
-        performance = Performance(),
-
+        losses=Losses(),
+        init_performance=init_performance,
+        performance=Performance(),
         # Storage
-        sort_keys = [],
-        next_lstm_state = next_lstm_state,
-        obs = obs,
-        actions = actions,
-        logprobs = logprobs,
-        rewards = rewards,
-        dones = dones,
-        values = values,
-        obs_ary = obs_ary,
-        actions_ary = actions_ary,
-        logprobs_ary = logprobs_ary,
-        rewards_ary = rewards_ary,
-        dones_ary = dones_ary,
-        truncateds_ary = truncateds_ary,
-        values_ary = values_ary,
-
+        sort_keys=[],
+        next_lstm_state=next_lstm_state,
+        obs=obs,
+        actions=actions,
+        logprobs=logprobs,
+        rewards=rewards,
+        dones=dones,
+        values=values,
+        obs_ary=obs_ary,
+        actions_ary=actions_ary,
+        logprobs_ary=logprobs_ary,
+        rewards_ary=rewards_ary,
+        dones_ary=dones_ary,
+        truncateds_ary=truncateds_ary,
+        values_ary=values_ary,
         # Misc
-        total_updates = total_updates,
-        update = update,
-        global_step = global_step,
-        agent_step = agent_step,
-        device = device,
-        start_time = start_time,
-        eval_mode = eval_mode,
+        total_updates=total_updates,
+        update=update,
+        global_step=global_step,
+        agent_step=agent_step,
+        device=device,
+        start_time=start_time,
+        eval_mode=eval_mode,
     )
+
 
 @pufferlib.utils.profile
 def evaluate(data):
     config = data.config
     # TODO: Handle update on resume
     if data.wandb is not None and data.performance.total_uptime > 0:
-        data.wandb.log({
-            'agent_SPS': data.agent_SPS,
-            'agent_step': data.agent_step,
-            'global_step': data.global_step,
-            'learning_rate': data.optimizer.param_groups[0]["lr"],
-            **{f'losses/{k}': v for k, v in data.losses.items()},
-            **{f'performance/{k}': v
-                for k, v in data.performance.items()},
-            **{f'{k}': v for k, v in data.stats.items()},  # comes with stats/ prefix
-            **{f'skillrank/{policy}': elo
-                for policy, elo in data.policy_pool.ranker.ratings.items()},
-        })
+        data.wandb.log(
+            {
+                "agent_SPS": data.agent_SPS,
+                "agent_step": data.agent_step,
+                "global_step": data.global_step,
+                "learning_rate": data.optimizer.param_groups[0]["lr"],
+                **{f"losses/{k}": v for k, v in data.losses.items()},
+                **{f"performance/{k}": v for k, v in data.performance.items()},
+                **{f"{k}": v for k, v in data.stats.items()},  # comes with stats/ prefix
+                **{
+                    f"skillrank/{policy}": elo
+                    for policy, elo in data.policy_pool.ranker.ratings.items()
+                },
+            }
+        )
 
     # update_policies() changes the policy id (in kernel) - policy mapping
     # It's good for training but not wanted for replay or evaluation, so we skip it
     if not data.eval_mode:
         data.policy_pool.update_policies()
 
-    performance = defaultdict(list)
+    # performance = defaultdict(list)
     env_profiler = pufferlib.utils.Profiler()
     inference_profiler = pufferlib.utils.Profiler()
     eval_profiler = pufferlib.utils.Profiler(memory=True, pytorch_memory=True).start()
@@ -285,9 +295,8 @@ def evaluate(data):
         with misc_profiler:
             i = data.policy_pool.update_scores(i, "return")
             # TODO: Update this for policy pool
-            for ii, ee  in zip(i['learner'], env_id):
-                ii['env_id'] = ee
-
+            for ii, ee in zip(i["learner"], env_id):
+                ii["env_id"] = ee
 
         with inference_profiler, torch.no_grad():
             o = torch.as_tensor(o)
@@ -306,7 +315,8 @@ def evaluate(data):
                 )
 
             actions, logprob, value, next_lstm_state = data.policy_pool.forwards(
-                    o.to(data.device), next_lstm_state)
+                o.to(data.device), next_lstm_state
+            )
 
             if next_lstm_state is not None:
                 h, c = next_lstm_state
@@ -315,16 +325,15 @@ def evaluate(data):
 
             value = value.flatten()
 
-       
         with misc_profiler:
             actions = actions.cpu().numpy()
-     
+
             # Index alive mask with policy pool idxs...
             # TODO: Find a way to avoid having to do this
             learner_mask = torch.Tensor(mask * data.policy_pool.mask)
 
             # Ensure indices do not exceed batch size
-            indices = torch.where(learner_mask)[0][:config.batch_size - ptr + 1].numpy()
+            indices = torch.where(learner_mask)[0][: config.batch_size - ptr + 1].numpy()
             end = ptr + len(indices)
 
             # Batch indexing
@@ -372,8 +381,8 @@ def evaluate(data):
     data.stats = {}
 
     # Get stats only from the learner
-    for k, v in infos['learner'].items():
-        try: # TODO: Better checks on log data types
+    for k, v in infos["learner"].items():
+        try:  # TODO: Better checks on log data types
             # Skip the unnecessary info from the stats
             if not any(skip in k for skip in SKIP_LOG_KEYS):
                 data.stats[k] = np.mean(v)
@@ -385,11 +394,11 @@ def evaluate(data):
 
     return data.stats, infos
 
+
 @pufferlib.utils.profile
 def train(data):
     if done_training(data):
-        raise RuntimeError(
-            f"Max training updates {data.total_updates} already reached")
+        raise RuntimeError(f"Max training updates {data.total_updates} already reached")
 
     config = data.config
     # assert data.num_steps % bptt_horizon == 0, "num_steps must be divisible by bptt_horizon"
@@ -420,9 +429,7 @@ def train(data):
             nextnonterminal = 1.0 - data.dones[i_nxt]
             nextvalues = data.values[i_nxt]
             delta = (
-                data.rewards[i_nxt]
-                + config.gamma * nextvalues * nextnonterminal
-                - data.values[i]
+                data.rewards[i_nxt] + config.gamma * nextvalues * nextnonterminal - data.values[i]
             )
             advantages[t] = lastgaelam = (
                 delta + config.gamma * config.gae_lambda * nextnonterminal * lastgaelam
@@ -430,14 +437,10 @@ def train(data):
 
     # Flatten the batch
     data.b_obs = b_obs = torch.Tensor(data.obs_ary[b_idxs])
-    b_actions = torch.Tensor(data.actions_ary[b_idxs]
-        ).to(data.device, non_blocking=True)
-    b_logprobs = torch.Tensor(data.logprobs_ary[b_idxs]
-        ).to(data.device, non_blocking=True)
-    b_dones = torch.Tensor(data.dones_ary[b_idxs]
-        ).to(data.device, non_blocking=True)
-    b_values = torch.Tensor(data.values_ary[b_idxs]
-        ).to(data.device, non_blocking=True)
+    b_actions = torch.Tensor(data.actions_ary[b_idxs]).to(data.device, non_blocking=True)
+    b_logprobs = torch.Tensor(data.logprobs_ary[b_idxs]).to(data.device, non_blocking=True)
+    b_dones = torch.Tensor(data.dones_ary[b_idxs]).to(data.device, non_blocking=True)
+    b_values = torch.Tensor(data.values_ary[b_idxs]).to(data.device, non_blocking=True)
     b_advantages = advantages.reshape(
         config.batch_rows, num_minibatches, config.bptt_horizon
     ).transpose(0, 1)
@@ -446,22 +449,23 @@ def train(data):
     # Optimizing the policy and value network
     train_time = time.time()
     pg_losses, entropy_losses, v_losses, clipfracs, old_kls, kls = [], [], [], [], [], []
-    mb_obs_buffer = torch.zeros_like(b_obs[0], pin_memory=(data.device=="cuda"))
+    mb_obs_buffer = torch.zeros_like(b_obs[0], pin_memory=(data.device == "cuda"))
 
     for epoch in range(config.update_epochs):
         lstm_state = None
         for mb in range(num_minibatches):
             mb_obs_buffer.copy_(b_obs[mb], non_blocking=True)
             mb_obs = mb_obs_buffer.to(data.device, non_blocking=True)
-            #mb_obs = b_obs[mb].to(data.device, non_blocking=True)
+            # mb_obs = b_obs[mb].to(data.device, non_blocking=True)
             mb_actions = b_actions[mb].contiguous()
             mb_values = b_values[mb].reshape(-1)
             mb_advantages = b_advantages[mb].reshape(-1)
             mb_returns = b_returns[mb].reshape(-1)
 
-            if hasattr(data.agent, 'lstm'):
+            if hasattr(data.agent, "lstm"):
                 _, newlogprob, entropy, newvalue, lstm_state = data.agent(
-                    mb_obs, state=lstm_state, action=mb_actions)
+                    mb_obs, state=lstm_state, action=mb_actions
+                )
                 lstm_state = (lstm_state[0].detach(), lstm_state[1].detach())
             else:
                 _, newlogprob, entropy, newvalue = data.agent(
@@ -478,9 +482,7 @@ def train(data):
                 old_kls.append(old_approx_kl.item())
                 approx_kl = ((ratio - 1) - logratio).mean()
                 kls.append(approx_kl.item())
-                clipfracs += [
-                    ((ratio - 1.0).abs() > config.clip_coef).float().mean().item()
-                ]
+                clipfracs += [((ratio - 1.0).abs() > config.clip_coef).float().mean().item()]
 
             mb_advantages = mb_advantages.reshape(-1)
             if config.norm_adv:
@@ -554,7 +556,8 @@ def train(data):
 
     data.update += 1
     if data.update % config.checkpoint_interval == 0 or done_training(data):
-       save_checkpoint(data)
+        save_checkpoint(data)
+
 
 def close(data):
     data.pool.close()
@@ -567,15 +570,17 @@ def close(data):
         data.wandb.run.log_artifact(artifact)
         data.wandb.finish()
 
+
 def done_training(data):
     return data.update >= data.total_updates
+
 
 def save_checkpoint(data):
     path = os.path.join(data.config.data_dir, data.exp_name)
     if not os.path.exists(path):
         os.makedirs(path)
 
-    model_name = f'model_{data.update:06d}.pt'
+    model_name = f"model_{data.update:06d}.pt"
     model_path = os.path.join(path, model_name)
 
     # Already saved
@@ -593,16 +598,17 @@ def save_checkpoint(data):
     }
 
     if data.wandb:
-        state['exp_name'] = data.exp_name
+        state["exp_name"] = data.exp_name
 
-    state_path = os.path.join(path, 'trainer_state.pt')
-    torch.save(state, state_path + '.tmp')
-    os.rename(state_path + '.tmp', state_path)
+    state_path = os.path.join(path, "trainer_state.pt")
+    torch.save(state, state_path + ".tmp")
+    os.rename(state_path + ".tmp", state_path)
 
     if data.config.verbose:
         print(f"Model saved to {model_path}")
 
     return model_path
+
 
 def seed_everything(seed, torch_deterministic):
     random.seed(seed)
@@ -620,6 +626,7 @@ def seed_everything(seed, torch_deterministic):
         # With torch >= 2.2, check also https://pytorch.org/docs/2.2/deterministic.html
         # torch.utils.deterministic.fill_uninitialized_memory = torch_deterministic
 
+
 def unroll_nested_dict(d):
     if not isinstance(d, dict):
         return d
@@ -631,36 +638,37 @@ def unroll_nested_dict(d):
         else:
             yield k, v
 
+
 def print_dashboard(stats, init_performance, performance):
     output = []
     data = {**init_performance, **performance}
     #  Only show these stats in the dashboard
-    if 'length' in stats:
-        data['length'] = stats['length']
+    if "length" in stats:
+        data["length"] = stats["length"]
 
     grouped_data = defaultdict(dict)
 
     for k, v in data.items():
-        if k == 'total_uptime':
+        if k == "total_uptime":
             v = timedelta(seconds=v)
-        if 'memory' in k:
+        if "memory" in k:
             v = pufferlib.utils.format_bytes(v)
-        elif 'time' in k:
+        elif "time" in k:
             try:
                 v = f"{v:.2f} s"
             except:
                 pass
-        
-        first_word, *rest_words = k.split('_')
-        rest_words = ' '.join(rest_words).title()
-        
+
+        first_word, *rest_words = k.split("_")
+        rest_words = " ".join(rest_words).title()
+
         grouped_data[first_word][rest_words] = v
-    
+
     for main_key, sub_dict in grouped_data.items():
         output.append(f"{main_key.title()}")
         for sub_key, sub_value in sub_dict.items():
             output.append(f"    {sub_key}: {sub_value}")
-    
+
     print("\033c", end="")
-    print('\n'.join(output))
-    time.sleep(1/20)
+    print("\n".join(output))
+    time.sleep(1 / 20)
