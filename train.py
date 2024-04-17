@@ -60,6 +60,8 @@ def get_init_args(fn):
 
 
 def setup_agent(agent_module):
+    recurrent_policy = getattr(agent_module, "Recurrent", None)
+
     def agent_creator(env, args):
         policy = agent_module.Policy(env, **args.policy)
         if not args.no_recurrence and recurrent_policy is not None:
@@ -69,7 +71,6 @@ def setup_agent(agent_module):
             policy = pufferlib.frameworks.cleanrl.Policy(policy)
         return policy.to(args.train.device)
     return agent_creator
-
 
 
 def combine_config_args(parser, args, config):
