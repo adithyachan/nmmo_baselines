@@ -50,32 +50,6 @@ class Config(
         self.set("GAME_PACKS", [(ng.AgentTraining, 1)])
         self.set("CURRICULUM_FILE_PATH", env_args.curriculum_file_path)
 
-        # Game-balancing related, making the game somewhat easier
-        # since all agents are on their own (no team play)
-        self.set("TERRAIN_SCATTER_EXTRA_RESOURCES", True)  # extra food/water
-
-        self.set("PROGRESSION_COMBAT_XP_SCALE", 6)  # from 3
-
-        self.set("COMBAT_DAMAGE_FORMULA", alt_combat_damage_formula)
-
-        self.set("NPC_LEVEL_DEFENSE", 8)  # from 15
-        self.set("NPC_BASE_DAMAGE", 0)  # from 15
-        self.set("NPC_LEVEL_DAMAGE", 8)  # from 15
-
-        self.set("PROGRESSION_MELEE_BASE_DAMAGE", 10)  # from 20
-        self.set("PROGRESSION_RANGE_BASE_DAMAGE", 10)
-        self.set("PROGRESSION_MAGE_BASE_DAMAGE", 10)
-
-        self.set("EQUIPMENT_WEAPON_BASE_DAMAGE", 5)  # from 15
-        self.set("EQUIPMENT_WEAPON_LEVEL_DAMAGE", 5)  # from 15
-
-        self.set("EQUIPMENT_AMMUNITION_BASE_DAMAGE", 0)  # from 15
-        self.set("EQUIPMENT_AMMUNITION_LEVEL_DAMAGE", 10)  # from 15
-
-        self.set("EQUIPMENT_TOOL_BASE_DEFENSE", 15)  # from 30
-
-        self.set("EQUIPMENT_ARMOR_LEVEL_DEFENSE", 3)  # from 10
-
 
 def make_env_creator(reward_wrapper_cls: BaseParallelWrapper, task_wrapper=False, curriculum=None):
     def env_creator(*args, **kwargs):
