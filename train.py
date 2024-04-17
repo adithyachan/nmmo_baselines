@@ -1,17 +1,19 @@
-# from pdb import set_trace as T
-import importlib
 import argparse
+import importlib
 import inspect
 import logging
-import yaml
-import time
 import sys
+import time
 
 import pufferlib
 import pufferlib.utils
+import yaml
+from syllabus.core import MultiagentSharedCurriculumWrapper, make_multiprocessing_curriculum
+from syllabus.curricula import SequentialCurriculum
 
 from reinforcement_learning import environment
-from train_helper import init_wandb, train, sweep, generate_replay
+from syllabus_task_wrapper import NMMOTaskWrapper
+from train_helper import generate_replay, init_wandb, sweep, train
 
 DEBUG = False
 # See curriculum_generation/manual_curriculum.py for details
@@ -57,15 +59,7 @@ def get_init_args(fn):
     return args
 
 
-# Return env_creator, agent_creator
-def setup_agent(module_name):
-    try:
-        agent_module = importlib.import_module(f"agent_zoo.{module_name}")
-    except ModuleNotFoundError:
-        raise ValueError(f"Agent module {module_name} not found under the agent_zoo directory.")
-
-    env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper)
-
+def setup_agent(agent_module):
     recurrent_policy = getattr(agent_module, "Recurrent", None)
 
     def agent_creator(env, args):
@@ -76,16 +70,7 @@ def setup_agent(module_name):
         else:
             policy = pufferlib.frameworks.cleanrl.Policy(policy)
         return policy.to(args.train.device)
-
-    init_args = {
-        "policy": get_init_args(agent_module.Policy.__init__),
-        "recurrent": get_init_args(agent_module.Recurrent.__init__)
-        if recurrent_policy is not None
-        else {},
-        "reward_wrapper": get_init_args(agent_module.RewardWrapper.__init__),
-    }
-
-    return agent_module, env_creator, agent_creator, init_args
+    return agent_creator
 
 
 def combine_config_args(parser, args, config):
@@ -161,6 +146,33 @@ def update_args(args, mode=None):
     return args
 
 
+def create_sequential_curriculum(task_space):
+    curricula = []
+    stopping = []
+
+    # Stage 1 - Survival
+    stage1 = [0, 1, 2, 3]
+    stopping.append("episode_return>=0.9&episodes>=5000")
+
+    # # Stage 2 - Harvest Equiptment
+    stage2 = [4, 5]
+    stopping.append("episode_return>=0.9&episodes>=5000")
+
+    # # Stage 3 - Equip Weapons
+    stage3 = [6, 7]
+    stopping.append("episode_return>=0.9&episodes>=5000")
+
+    # # Stage 4 - Fight
+    stage4 = [8, 9]
+    stopping.append("episode_return>=0.9&episodes>=5000")
+
+    # # Stage 5 - Kill
+    stage5 = [10]
+
+    curricula = [stage1, stage2, stage3, stage4, stage5]
+    return SequentialCurriculum(curricula, stopping, task_space, return_buffer_size=5000)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Parse environment argument", add_help=False)
@@ -186,6 +198,12 @@ if __name__ == "__main__":
         default=None,
         help="The index of the task to assign in the curriculum file",
     )
+    parser.add_argument(
+        "--test-curriculum", type=str, default=BASELINE_CURRICULUM, help="Path to curriculum file"
+    )
+    parser.add_argument(
+        "--syllabus", type=bool, default=False, help="Use Syllabus for curriculum"
+    )
     # parser.add_argument('--baseline', action='store_true', help='Baseline run')
     parser.add_argument(
         "--vectorization",
@@ -203,7 +221,17 @@ if __name__ == "__main__":
 
     args = parser.parse_known_args()[0].__dict__
     config = load_from_config(args["agent"], debug=args.get("debug", False))
-    agent_module, env_creator, agent_creator, init_args = setup_agent(args["agent"])
+
+    try:
+        agent_module = importlib.import_module(f"agent_zoo.{args['agent']}")
+    except ModuleNotFoundError:
+        raise ValueError(f"Agent module {args['agent']} not found under the agent_zoo directory.")
+
+    init_args = {
+        "policy": get_init_args(agent_module.Policy.__init__),
+        "recurrent": get_init_args(agent_module.Recurrent.__init__),
+        "reward_wrapper": get_init_args(agent_module.RewardWrapper.__init__),
+    }
 
     # Update config with environment defaults
     config.policy = {**init_args["policy"], **config.policy}
@@ -215,6 +243,23 @@ if __name__ == "__main__":
 
     # Perform mode-specific updates
     args = update_args(args, mode=args["mode"])
+
+    sample_env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper, task_wrapper=True)
+
+    # Set up curriculum
+    curriculum = None
+    if args.syllabus:
+        sample_env = sample_env_creator(env=args.env, reward_wrapper=args.reward_wrapper)
+        task_space = NMMOTaskWrapper.task_space
+        curriculum = create_sequential_curriculum(task_space)
+        curriculum = MultiagentSharedCurriculumWrapper(curriculum, sample_env.possible_agents)
+        curriculum = make_multiprocessing_curriculum(curriculum)
+    else:
+        args.env.curriculum_file_path = args.curriculum
+
+    env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper, curriculum=curriculum)
+
+    agent_creator = setup_agent(agent_module)
 
     if args.train.env_pool is True:
         logging.warning(

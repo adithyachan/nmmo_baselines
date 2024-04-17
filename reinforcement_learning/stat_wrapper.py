@@ -21,6 +21,9 @@ class BaseStatWrapper(BaseParallelWrapper):
         self._reset_episode_stats()
         self._stat_prefix = stat_prefix
 
+    def seed(self, seed):
+        self.env.seed(seed)
+
     def observation(self, agent_id, agent_obs):
         """Called before observations are returned from the environment
         Use this to define custom featurizers. Changing the space itself requires you to
