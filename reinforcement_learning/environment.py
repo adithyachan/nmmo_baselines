@@ -68,7 +68,6 @@ def make_env_creator(reward_wrapper_cls: BaseParallelWrapper, task_wrapper=False
     def env_creator(*args, **kwargs):
         """Create an environment."""
         env = nmmo.Env(Config(kwargs['env']))  # args.env is provided as kwargs
-        # TODO: make nmmo conform to the newer PettingZoo API and remove below line
         env = reward_wrapper_cls(env, **kwargs['reward_wrapper'])
 
         # Add Syllabus task wrapper
