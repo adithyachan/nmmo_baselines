@@ -36,6 +36,7 @@ def init_wandb(args, resume=True):
             "policy": args.policy,
             "recurrent": args.recurrent,
             "reward_wrapper": args.reward_wrapper,
+            "syllabus": args.syllabus,
         },
         "name": args.exp_name,
         "monitor_gym": True,
