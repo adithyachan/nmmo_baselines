@@ -215,8 +215,9 @@ if __name__ == "__main__":
     args = update_args(args, mode=args["mode"])
 
     # Make default or syllabus-based env_creator
+    syllabus = None
     if args.syllabus is True:
-        env_creator = syllabus_wrapper.make_env_creator(args, agent_module)
+        syllabus, env_creator = syllabus_wrapper.make_syllabus_env_creator(args, agent_module)
     else:
         args.env.curriculum_file_path = args.curriculum
         env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper)
@@ -232,7 +233,7 @@ if __name__ == "__main__":
         args.exp_name = f"nmmo_{time.strftime('%Y%m%d_%H%M%S')}"
 
     if args.mode == "train":
-        train(args, env_creator, agent_creator)
+        train(args, env_creator, agent_creator, syllabus)
         exit(0)
     elif args.mode == "sweep":
         sweep(args, env_creator, agent_creator)

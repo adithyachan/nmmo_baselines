@@ -17,7 +17,7 @@ from syllabus.task_space import TaskSpace
 from reinforcement_learning import environment
 
 
-def make_env_creator(args, agent_module):
+def make_syllabus_env_creator(args, agent_module):
     sample_env_creator = environment.make_env_creator(
         reward_wrapper_cls=agent_module.RewardWrapper, syllabus_wrapper=True
     )
@@ -28,7 +28,7 @@ def make_env_creator(args, agent_module):
     curriculum = MultiagentSharedCurriculumWrapper(curriculum, sample_env.possible_agents)
     curriculum = make_multiprocessing_curriculum(curriculum)
 
-    return environment.make_env_creator(
+    return curriculum, environment.make_env_creator(
         reward_wrapper_cls=agent_module.RewardWrapper, syllabus=curriculum
     )
 

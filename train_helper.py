@@ -4,12 +4,10 @@ import logging
 
 import dill
 import wandb
-
 import torch
 import numpy as np
 
 import pufferlib.policy_pool as pp
-
 from nmmo.render.replay_helper import FileReplayHelper
 from nmmo.task.task_spec import make_task_from_spec
 
@@ -48,7 +46,7 @@ def init_wandb(args, resume=True):
     return wandb.init(**wandb_kwargs)
 
 
-def train(args, env_creator, agent_creator):
+def train(args, env_creator, agent_creator, syllabus=None):
     data = clean_pufferl.create(
         config=args.train,
         agent_creator=agent_creator,
@@ -63,6 +61,8 @@ def train(args, env_creator, agent_creator):
     while not clean_pufferl.done_training(data):
         clean_pufferl.evaluate(data)
         clean_pufferl.train(data)
+        if syllabus is not None:
+            syllabus.log_metrics(data.wandb, step=data.global_step)
 
     print("Done training. Saving data...")
     clean_pufferl.close(data)
