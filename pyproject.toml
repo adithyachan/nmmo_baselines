@@ -1,3 +1,6 @@
+[build-system]
+requires = ["pip>=23.0", "setuptools>=61.0", "wheel"]
+
 [project]
 name = "nmmo2-baselines"
 version = "0.1.0"
@@ -14,10 +17,11 @@ classifiers = [
 dependencies = [
     "accelerate==0.27.2",
     "nmmo@git+https://github.com/kywch/nmmo-environment",  # WIP nmmo 2.1
-    "polars",
-    "pufferlib[nmmo]==0.7.3",
-    "psutil",
-    "torch",
+    "polars==0.20.21",
+    "pufferlib[nmmo]>=0.7.3",
+    "psutil==5.9.8",
+    "syllabus-rl@git+https://github.com/kywch/Syllabus@nmmo",  # To replace with pip later
+    "torch==2.1.0",  # match puffertank
     "transformers==4.37.2",
     "wandb",
 ]

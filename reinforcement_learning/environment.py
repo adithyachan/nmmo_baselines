@@ -6,12 +6,9 @@ import nmmo.core.game_api as ng
 import pufferlib
 import pufferlib.emulation
 from pettingzoo.utils.wrappers.base_parallel import BaseParallelWrapper
-from syllabus.core import PettingZooMultiProcessingSyncWrapper
-from syllabus_task_wrapper import NMMOTaskWrapper
+from syllabus.core import PettingZooMultiProcessingSyncWrapper as SyllabusSyncWrapper
 
-
-def alt_combat_damage_formula(offense, defense, multiplier, minimum_proportion):
-    return int(max(multiplier * offense - defense, offense * minimum_proportion))
+from syllabus_wrapper import SyllabusTaskWrapper
 
 
 class Config(
@@ -27,6 +24,7 @@ class Config(
     nc.Exchange,
 ):
     """Configuration for Neural MMO."""
+
     def __init__(self, env_args: Namespace):
         super().__init__()
 
@@ -51,21 +49,25 @@ class Config(
         self.set("CURRICULUM_FILE_PATH", env_args.curriculum_file_path)
 
 
-def make_env_creator(reward_wrapper_cls: BaseParallelWrapper, task_wrapper=False, curriculum=None):
+def make_env_creator(
+    reward_wrapper_cls: BaseParallelWrapper, syllabus_wrapper=False, syllabus=None
+):
     def env_creator(*args, **kwargs):
         """Create an environment."""
         env = nmmo.Env(Config(kwargs["env"]))  # args.env is provided as kwargs
         env = reward_wrapper_cls(env, **kwargs["reward_wrapper"])
 
         # Add Syllabus task wrapper
-        if task_wrapper or curriculum is not None:
-            env = NMMOTaskWrapper(env)
+        if syllabus_wrapper or syllabus is not None:
+            env = SyllabusTaskWrapper(env)
 
-        # Use curriculum if provided
-        if curriculum is not None:
-            # Add Syllabus Sync Wrapper
-            env = PettingZooMultiProcessingSyncWrapper(
-                env, curriculum.get_components(), update_on_step=False, task_space=env.task_space,
+        # Use syllabus curriculum if provided
+        if syllabus is not None:
+            env = SyllabusSyncWrapper(
+                env,
+                syllabus.get_components(),
+                update_on_step=False,
+                task_space=env.task_space,
             )
 
         env = pufferlib.emulation.PettingZooPufferEnv(env)
