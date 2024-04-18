@@ -38,16 +38,16 @@ def create_sequential_curriculum(task_space):
     stopping = []
 
     stage1 = list(range(4))
-    stopping.append("episode_return>=0.9&episodes>=5000")
+    stopping.append("episode_return>=0.8&episodes>=5000")
 
     stage2 = list(range(4, 8))
-    stopping.append("episode_return>=0.9&episodes>=5000")
+    stopping.append("episode_return>=0.8&episodes>=5000")
 
     stage3 = list(range(8, 12))
-    stopping.append("episode_return>=0.9&episodes>=5000")
+    stopping.append("episode_return>=0.8&episodes>=5000")
 
     stage4 = list(range(12, 16))
-    stopping.append("episode_return>=0.9&episodes>=5000")
+    stopping.append("episode_return>=0.8&episodes>=5000")
 
     stage5 = list(range(16, 20))
 
