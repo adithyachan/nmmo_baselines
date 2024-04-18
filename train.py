@@ -217,6 +217,9 @@ if __name__ == "__main__":
     # Make default or syllabus-based env_creator
     syllabus = None
     if args.syllabus is True:
+        # NOTE: Setting use_custom_reward to False will ignore the agent's custom reward
+        # and only use the env-provided reward from the curriculum tasks
+        args.reward_wrapper.use_custom_reward = False
         syllabus, env_creator = syllabus_wrapper.make_syllabus_env_creator(args, agent_module)
     else:
         args.env.curriculum_file_path = args.curriculum

@@ -9,13 +9,15 @@ class RewardWrapper(BaseStatWrapper):
         eval_mode=False,
         early_stop_agent_num=0,
         stat_prefix=None,
+        use_custom_reward=True,
         # Custom reward wrapper args
         explore_bonus_weight=0,
         clip_unique_event=3,
         disable_give=True,
     ):
-        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix)
+        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix, use_custom_reward)
         self.stat_prefix = stat_prefix
+
         self.explore_bonus_weight = explore_bonus_weight
         self.clip_unique_event = clip_unique_event
         self.disable_give = disable_give

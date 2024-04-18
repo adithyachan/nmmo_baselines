@@ -13,6 +13,7 @@ class BaseStatWrapper(BaseParallelWrapper):
         eval_mode=False,
         early_stop_agent_num=0,
         stat_prefix=None,
+        use_custom_reward=True,
     ):
         super().__init__(env)
         self.env_done = False
@@ -20,6 +21,7 @@ class BaseStatWrapper(BaseParallelWrapper):
         self.eval_mode = eval_mode
         self._reset_episode_stats()
         self._stat_prefix = stat_prefix
+        self.use_custom_reward = use_custom_reward
 
     def seed(self, seed):
         self.env.seed(seed)
@@ -72,9 +74,16 @@ class BaseStatWrapper(BaseParallelWrapper):
             trunc, info = self._process_stats_and_early_stop(
                 agent_id, rewards[agent_id], terms[agent_id], truncs[agent_id], infos[agent_id]
             )
-            rew, term, trunc, info = self.reward_terminated_truncated_info(
-                agent_id, rewards[agent_id], terms[agent_id], trunc, info
-            )
+
+            if self.use_custom_reward is True:
+                rew, term, trunc, info = self.reward_terminated_truncated_info(
+                    agent_id, rewards[agent_id], terms[agent_id], trunc, info
+                )
+            else:
+                # NOTE: Also disable death penalty, which is not from the task
+                rew = 0 if terms[agent_id] is True else rewards[agent_id]
+                term = terms[agent_id]
+
             rewards[agent_id] = rew
             terms[agent_id] = term
             truncs[agent_id] = trunc

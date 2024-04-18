@@ -9,13 +9,15 @@ class RewardWrapper(BaseStatWrapper):
         eval_mode=False,
         early_stop_agent_num=0,
         stat_prefix=None,
+        use_custom_reward=True,
         # Custom reward wrapper args
         heal_bonus_weight=0,
         explore_bonus_weight=0,
         clip_unique_event=3,
     ):
-        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix)
+        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix, use_custom_reward)
         self.stat_prefix = stat_prefix
+
         self.heal_bonus_weight = heal_bonus_weight
         self.explore_bonus_weight = explore_bonus_weight
         self.clip_unique_event = clip_unique_event
@@ -76,9 +78,5 @@ class RewardWrapper(BaseStatWrapper):
             explore_bonus *= self.explore_bonus_weight
 
         reward += healing_bonus + explore_bonus
-
-        # NOTE: Disable death reward. This is temporarly for task-conditioning exp.
-        # if terminated is True:
-        #     reward = 0
 
         return reward, terminated, truncated, info

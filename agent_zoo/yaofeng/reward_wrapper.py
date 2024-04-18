@@ -16,6 +16,7 @@ class RewardWrapper(BaseStatWrapper):
         eval_mode=False,
         early_stop_agent_num=0,
         stat_prefix=None,
+        use_custom_reward=True,
         # Custom reward wrapper args
         hp_bonus_weight=0,
         exp_bonus_weight=0,
@@ -27,7 +28,7 @@ class RewardWrapper(BaseStatWrapper):
         disable_give=True,
         donot_attack_dangerous_npc=True,
     ):
-        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix)
+        super().__init__(env, eval_mode, early_stop_agent_num, stat_prefix, use_custom_reward)
         self.stat_prefix = stat_prefix
         self.default_spawn_immunity = env.config.COMBAT_SPAWN_IMMUNITY
 
