@@ -37,27 +37,31 @@ def create_sequential_curriculum(task_space):
     curricula = []
     stopping = []
 
-    # Stage 1 - Survival
-    stage1 = [0, 1, 2, 3]
+    stage1 = list(range(4))
     stopping.append("episode_return>=0.9&episodes>=5000")
 
-    # # Stage 2 - Harvest Equiptment
-    stage2 = [4, 5]
+    stage2 = list(range(4, 8))
     stopping.append("episode_return>=0.9&episodes>=5000")
 
-    # # Stage 3 - Equip Weapons
-    stage3 = [6, 7]
+    stage3 = list(range(8, 12))
     stopping.append("episode_return>=0.9&episodes>=5000")
 
-    # # Stage 4 - Fight
-    stage4 = [8, 9]
+    stage4 = list(range(12, 16))
     stopping.append("episode_return>=0.9&episodes>=5000")
 
-    # # Stage 5 - Kill
-    stage5 = [10]
+    stage5 = list(range(16, 20))
 
     curricula = [stage1, stage2, stage3, stage4, stage5]
     return SequentialCurriculum(curricula, stopping, task_space, return_buffer_size=5000)
+
+
+def create_basic_tasks(unit_count):
+    return [
+        task_spec.TaskSpec(bp.TickGE, {"num_tick": 10 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "SCORE_HIT", "N": unit_count}),
+    ]
 
 
 class SyllabusTaskWrapper(PettingZooTaskWrapper):
@@ -158,66 +162,12 @@ class SyllabusTaskWrapper(PettingZooTaskWrapper):
         return [("agent", StayAlive, {"task_cls": OngoingTask})]
 
     def sequential_task_list(self):
-        # Stage 1 - Survival
-        stage1 = []
-        stage1.append(task_spec.TaskSpec(bp.TickGE, {"num_tick": 500}, reward_to="agent"))
-        stage1.append(
-            task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": 20}, reward_to="agent")
-        )
-        stage1.append(
-            task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": 20}, reward_to="agent")
-        )
-        stage1.append(
-            task_spec.TaskSpec(bp.CountEvent, {"event": "GO_FARTHEST", "N": 20}, reward_to="agent")
-        )
-
-        # Stage 2 - Harvest Equiptment
-        stage2 = []
-        stage2.append(
-            task_spec.TaskSpec(
-                bp.HarvestItem,
-                {"item": i.Ammunition, "level": 1, "quantity": 20},
-                reward_to="agent",
-            )
-        )
-        stage2.append(
-            task_spec.TaskSpec(
-                bp.HarvestItem, {"item": i.Weapon, "level": 1, "quantity": 20}, reward_to="agent"
-            )
-        )
-
-        # # Stage 3 - Equip Weapons
-        stage3 = []
-        stage3.append(
-            task_spec.TaskSpec(
-                bp.EquipItem, {"item": i.Weapon, "level": 1, "num_agent": 1}, reward_to="agent"
-            )
-        )
-        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.ammunition, 'level': 1, 'num_agent': 1}, reward_to='agent'))
-        stage3.append(
-            task_spec.TaskSpec(
-                bp.EquipItem, {"item": i.Weapon, "level": 1, "num_agent": 8}, reward_to="agent"
-            )
-        )
-        # stage3.append(task_spec.TaskSpec(bp.EquipItem, {'item': i.ammunition, 'level': 1, 'num_agent': 8}, reward_to='agent'))
-
-        # # Stage 4 - Fight
-        stage4 = []
-        stage4.append(task_spec.TaskSpec(bp.CanSeeGroup, {"target": "all_foes"}, reward_to="agent"))
-        stage4.append(
-            task_spec.TaskSpec(bp.CountEvent, {"event": "SCORE_HIT", "N": 20}, reward_to="agent")
-        )
-
-        # # Stage 5 - Kill
-        stage5 = []
-        stage5.append(
-            task_spec.TaskSpec(
-                bp.DefeatEntity,
-                {"agent_type": "player", "level": 1, "num_agent": 1},
-                reward_to="agent",
-            )
-        )
-
+        # Sanity checks
+        stage1 = create_basic_tasks(5)  # Easiest
+        stage2 = create_basic_tasks(10)  # Easier
+        stage3 = create_basic_tasks(15)  # Moderate
+        stage4 = create_basic_tasks(20)  # Somewhat difficult
+        stage5 = create_basic_tasks(30)  # Challenging
         return stage1 + stage2 + stage3 + stage4 + stage5
 
     def create_manual_task_list(self):
