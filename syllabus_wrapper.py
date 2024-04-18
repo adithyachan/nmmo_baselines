@@ -37,19 +37,19 @@ def create_sequential_curriculum(task_space):
     curricula = []
     stopping = []
 
-    stage1 = list(range(4))
+    stage1 = list(range(10))
     stopping.append("episode_return>=0.8&episodes>=5000")
 
-    stage2 = list(range(4, 8))
+    stage2 = list(range(10, 20))
     stopping.append("episode_return>=0.8&episodes>=5000")
 
-    stage3 = list(range(8, 12))
+    stage3 = list(range(20, 30))
     stopping.append("episode_return>=0.8&episodes>=5000")
 
-    stage4 = list(range(12, 16))
+    stage4 = list(range(30, 40))
     stopping.append("episode_return>=0.8&episodes>=5000")
 
-    stage5 = list(range(16, 20))
+    stage5 = list(range(40, 50))
 
     curricula = [stage1, stage2, stage3, stage4, stage5]
     return SequentialCurriculum(curricula, stopping, task_space, return_buffer_size=5000)
@@ -57,10 +57,16 @@ def create_sequential_curriculum(task_space):
 
 def create_basic_tasks(unit_count):
     return [
-        task_spec.TaskSpec(bp.TickGE, {"num_tick": 10 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "SCORE_HIT", "N": unit_count}),
+        task_spec.TaskSpec(bp.TickGE, {"num_tick": 60 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": 10 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": 10 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "HARVEST_ITEM", "N": 5 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "GO_FARTHEST", "N": 4 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "LEVEL_UP", "N": 2 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "EQUIP_ITEM", "N": unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "CONSUME_ITEM", "N": unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "BUY_ITEM", "N": unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "PLAYER_KILL", "N": unit_count}),
     ]
 
 
@@ -163,11 +169,11 @@ class SyllabusTaskWrapper(PettingZooTaskWrapper):
 
     def sequential_task_list(self):
         # Sanity checks
-        stage1 = create_basic_tasks(5)  # Easiest
-        stage2 = create_basic_tasks(10)  # Easier
-        stage3 = create_basic_tasks(15)  # Moderate
-        stage4 = create_basic_tasks(20)  # Somewhat difficult
-        stage5 = create_basic_tasks(30)  # Challenging
+        stage1 = create_basic_tasks(1)  # Easiest
+        stage2 = create_basic_tasks(2)  # Easier
+        stage3 = create_basic_tasks(3)  # Moderate
+        stage4 = create_basic_tasks(4)  # Somewhat difficult
+        stage5 = create_basic_tasks(5)  # Challenging
         return stage1 + stage2 + stage3 + stage4 + stage5
 
     def create_manual_task_list(self):
