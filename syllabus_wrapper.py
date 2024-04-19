@@ -38,16 +38,16 @@ def create_sequential_curriculum(task_space):
     stopping = []
 
     stage1 = list(range(10))
-    stopping.append("episode_return>=0.75&episodes>=5000")
+    stopping.append("episode_return>=0.75&episodes>=20000")
 
     stage2 = list(range(10, 20))
-    stopping.append("episode_return>=0.75&episodes>=5000")
+    stopping.append("episode_return>=0.75&episodes>=20000")
 
     stage3 = list(range(20, 30))
-    stopping.append("episode_return>=0.75&episodes>=5000")
+    stopping.append("episode_return>=0.75&episodes>=20000")
 
     stage4 = list(range(30, 40))
-    stopping.append("episode_return>=0.75&episodes>=5000")
+    stopping.append("episode_return>=0.75&episodes>=20000")
 
     stage5 = list(range(40, 50))
 
@@ -60,8 +60,8 @@ def create_basic_tasks(unit_count):
         task_spec.TaskSpec(bp.TickGE, {"num_tick": 50 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": 5 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": 5 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "HARVEST_ITEM", "N": 4 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "GO_FARTHEST", "N": 4 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "HARVEST_ITEM", "N": 3 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "GO_FARTHEST", "N": 3 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "LEVEL_UP", "N": 2 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "EQUIP_ITEM", "N": unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "CONSUME_ITEM", "N": unit_count}),
@@ -170,10 +170,10 @@ class SyllabusTaskWrapper(PettingZooTaskWrapper):
     def sequential_task_list(self):
         # Sanity checks
         stage1 = create_basic_tasks(1)  # Easiest
-        stage2 = create_basic_tasks(2)  # Easier
-        stage3 = create_basic_tasks(3)  # Moderate
-        stage4 = create_basic_tasks(4)  # Somewhat difficult
-        stage5 = create_basic_tasks(5)  # Challenging
+        stage2 = create_basic_tasks(3)  # Easier
+        stage3 = create_basic_tasks(5)  # Moderate
+        stage4 = create_basic_tasks(7)  # Somewhat difficult
+        stage5 = create_basic_tasks(10)  # Challenging
         return stage1 + stage2 + stage3 + stage4 + stage5
 
     def create_manual_task_list(self):
