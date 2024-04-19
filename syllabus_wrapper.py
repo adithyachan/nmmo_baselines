@@ -57,10 +57,10 @@ def create_sequential_curriculum(task_space):
 
 def create_basic_tasks(unit_count):
     return [
-        task_spec.TaskSpec(bp.TickGE, {"num_tick": 60 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": 10 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": 10 * unit_count}),
-        task_spec.TaskSpec(bp.CountEvent, {"event": "HARVEST_ITEM", "N": 5 * unit_count}),
+        task_spec.TaskSpec(bp.TickGE, {"num_tick": 50 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "EAT_FOOD", "N": 5 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "DRINK_WATER", "N": 5 * unit_count}),
+        task_spec.TaskSpec(bp.CountEvent, {"event": "HARVEST_ITEM", "N": 4 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "GO_FARTHEST", "N": 4 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "LEVEL_UP", "N": 2 * unit_count}),
         task_spec.TaskSpec(bp.CountEvent, {"event": "EQUIP_ITEM", "N": unit_count}),
