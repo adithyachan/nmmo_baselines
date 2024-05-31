@@ -1,4 +1,4 @@
-policy_name	mode	seed	count	length	score	weighted_score
+policy_name	mode	seed	count	length	task_progress	weighted_score
 baseline_10M	pvp	1	2875	113.036870	0.057293	7.711149
 baseline_10M	pvp	12196392	2856	113.172619	0.053504	6.621138
 baseline_10M	pvp	19525770	2856	111.803221	0.051267	7.079278

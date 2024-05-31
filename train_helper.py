@@ -140,7 +140,9 @@ def generate_replay(args, env_creator, agent_creator, stop_when_all_complete_tas
     # Add the policy names to agent names
     if len(policies) > 1:
         for policy_id, samp in data.policy_pool.sample_idxs.items():
-            policy_name = data.policy_pool.current_policies[policy_id]["name"]
+            policy_name = "learner"
+            if policy_id in data.policy_pool.current_policies:
+                policy_name = data.policy_pool.current_policies[policy_id]["name"]
             for idx in samp:
                 agent_id = idx + 1  # agents are 0-indexed in policy_pool, but 1-indexed in nmmo
                 nmmo_env.realm.players[agent_id].name = f"{policy_name}_{agent_id}"

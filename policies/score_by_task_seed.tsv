@@ -1,4 +1,4 @@
-category	task_name	weight	policy_name	mode	seed	count	score
+category	task_name	weight	policy_name	mode	seed	count	task_progress
 combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	5.555556	baseline_10M	pvp	1	44	0.096591
 combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	5.555556	baseline_10M	pvp	12196392	51	0.093137
 combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	5.555556	baseline_10M	pvp	19525770	41	0.078049

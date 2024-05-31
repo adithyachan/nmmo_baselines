@@ -1,4 +1,4 @@
-mode	category	policy_name	score
+mode	category	policy_name	task_progress
 pvp	combat	baseline_10M	0.060323
 pvp	combat	learner	0.022414
 pvp	combat	takeru_100M	0.141534

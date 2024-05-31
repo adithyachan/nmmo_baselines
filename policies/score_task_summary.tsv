@@ -1,4 +1,4 @@
-mode	category	task_name	policy_name	score
+mode	category	task_name	policy_name	task_progress
 pvp	combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	baseline_10M	0.090335
 pvp	combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	learner	0.039319
 pvp	combat	curriculum/Task_CountEvent_(event:PLAYER_KILL_N:20)_reward_to:agent	takeru_100M	0.198185
