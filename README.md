@@ -11,6 +11,8 @@ Baselines for Neural MMO (neuralmmo.github.io) -- new users should treat this re
 
 ## Installation
 
+After cloning this repo, run:
+
 ```
 pip install -e .[dev]
 ```
