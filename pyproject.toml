@@ -15,14 +15,14 @@ classifiers = [
 	"Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "accelerate==0.27.2",
+    "accelerate",
     "nmmo>=2.1,<2.2",
-    "polars==0.20.21",
+    "polars",
     "pufferlib[nmmo]==0.7.3",
-    "psutil==5.9.8",
+    "psutil<6",
     "syllabus-rl@git+https://github.com/kywch/Syllabus@nmmo",  # To replace with pip later
-    "torch==2.1.0",  # match puffertank
-    "transformers==4.37.2",
+    "torch>2",
+    "transformers",
     "wandb",
 ]
 
