@@ -18,7 +18,7 @@ dependencies = [
     "accelerate==0.27.2",
     "nmmo>=2.1,<2.2",
     "polars==0.20.21",
-    "pufferlib[nmmo]>=0.7.3",
+    "pufferlib[nmmo]==0.7.3",
     "psutil==5.9.8",
     "syllabus-rl@git+https://github.com/kywch/Syllabus@nmmo",  # To replace with pip later
     "torch==2.1.0",  # match puffertank
