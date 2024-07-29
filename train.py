@@ -1,139 +1,248 @@
-import os
+import argparse
+import importlib
+import inspect
 import logging
-import torch
+import sys
+import time
 
-from pufferlib.vectorization import Serial, Multiprocessing
-from pufferlib.policy_store import DirectoryPolicyStore
-from pufferlib.frameworks import cleanrl
+import pufferlib
+import yaml
 
-import environment
+from reinforcement_learning import environment
+from train_helper import generate_replay, init_wandb, sweep, train
+import syllabus_wrapper
 
-from reinforcement_learning import clean_pufferl, policy, config
+DEBUG = False
+# See curriculum_generation/manual_curriculum.py for details
+BASELINE_CURRICULUM = "curriculum_generation/curriculum_with_embedding.pkl"
 
-# NOTE: this file changes when running curriculum generation track
-# Run test_task_encoder.py to regenerate this file (or get it from the repo)
-BASELINE_CURRICULUM_FILE = "reinforcement_learning/curriculum_with_embedding.pkl"
-CUSTOM_CURRICULUM_FILE = "curriculum_generation/custom_curriculum_with_embedding.pkl"
 
-def setup_env(args):
-    run_dir = os.path.join(args.runs_dir, args.run_name)
-    os.makedirs(run_dir, exist_ok=True)
-    logging.info("Training run: %s (%s)", args.run_name, run_dir)
-    logging.info("Training args: %s", args)
-
-    policy_store = None
-    if args.policy_store_dir is None:
-        args.policy_store_dir = os.path.join(run_dir, "policy_store")
-        logging.info("Using policy store from %s", args.policy_store_dir)
-        policy_store = DirectoryPolicyStore(args.policy_store_dir)
-
-    def make_policy(envs):
-        learner_policy = policy.Baseline(
-            envs.driver_env,
-            input_size=args.input_size,
-            hidden_size=args.hidden_size,
-            task_size=args.task_size
-        )
-        return cleanrl.Policy(learner_policy)
-
-    trainer = clean_pufferl.CleanPuffeRL(
-        device=torch.device(args.device),
-        seed=args.seed,
-        env_creator=environment.make_env_creator(args),
-        env_creator_kwargs={},
-        agent_creator=make_policy,
-        data_dir=run_dir,
-        exp_name=args.run_name,
-        policy_store=policy_store,
-        wandb_entity=args.wandb_entity,
-        wandb_project=args.wandb_project,
-        wandb_extra_data=args,
-        checkpoint_interval=args.checkpoint_interval,
-        vectorization=Serial if args.use_serial_vecenv else Multiprocessing,
-        total_timesteps=args.train_num_steps,
-        num_envs=args.num_envs,
-        num_cores=args.num_cores or args.num_envs,
-        num_buffers=args.num_buffers,
-        batch_size=args.rollout_batch_size,
-        learning_rate=args.ppo_learning_rate,
-        selfplay_learner_weight=args.learner_weight,
-        selfplay_num_policies=args.max_opponent_policies + 1,
-        #record_loss = args.record_loss,
+def load_from_config(agent, debug=False):
+    with open("config.yaml") as f:
+        config = yaml.safe_load(f)
+    default_keys = (
+        "env train policy recurrent sweep_metadata sweep_metric sweep wandb reward_wrapper".split()
     )
-    return trainer
+    defaults = {key: config.get(key, {}) for key in default_keys}
 
-def reinforcement_learning_track(trainer, args):
-    while not trainer.done_training():
-        trainer.evaluate()
-        trainer.train(
-            update_epochs=args.ppo_update_epochs,
-            bptt_horizon=args.bptt_horizon,
-            batch_rows=args.ppo_training_batch_size // args.bptt_horizon,
-            clip_coef=args.clip_coef,
-        )
+    debug_config = config.get("debug", {}) if debug else {}
+    agent_config = config[agent]
 
-def curriculum_generation_track(trainer, args, use_elm=True):
-    from curriculum_generation.task_encoder import TaskEncoder
-    LLM_CHECKPOINT = "Salesforce/codegen25-7b-instruct"
+    combined_config = {}
+    for key in default_keys:
+        agent_subconfig = agent_config.get(key, {})
+        debug_subconfig = debug_config.get(key, {})
+        combined_config[key] = {**defaults[key], **agent_subconfig, **debug_subconfig}
 
-    if use_elm:
-        from curriculum_generation import manual_curriculum
-        from curriculum_generation.elm import OpenELMTaskGenerator
-        NUM_SEED_TASKS = 20
-        NUM_NEW_TASKS = 5
-        ELM_DEBUG = True
+    return pufferlib.namespace(**combined_config)
 
-        task_encoder = TaskEncoder(LLM_CHECKPOINT, manual_curriculum, batch_size=2)
-        task_generator = OpenELMTaskGenerator(manual_curriculum.curriculum, LLM_CHECKPOINT)
 
-        # Generating new tasks and evaluating all candidate training tasks
-        for _ in range(3):
-            # NOTE: adjust NUM_SEED_TASKS to fit your gpu
-            seed_task_list = task_generator.sample_tasks(NUM_SEED_TASKS, random_ratio=1)
-            new_task_list = task_generator.evolve_tasks(seed_task_list, NUM_NEW_TASKS, debug=ELM_DEBUG)
-            task_generator.add_tasks(new_task_list)
-            task_encoder.get_task_embedding(seed_task_list + new_task_list, save_to_file=CUSTOM_CURRICULUM_FILE)
-            # CHECK ME: the trainer will automatically use the new task embedding file
-            _, _, infos = trainer.evaluate()
-            task_generator.update(infos) # update the task stats
+def get_init_args(fn):
+    if fn is None:
+        return {}
+    sig = inspect.signature(fn)
+    args = {}
+    for name, param in sig.parameters.items():
+        if name in ("self", "env", "policy"):
+            continue
+        if name in ("agent_id", "is_multiagent"):  # Postprocessor args
+            continue
+        if param.kind == inspect.Parameter.VAR_POSITIONAL:
+            continue
+        elif param.kind == inspect.Parameter.VAR_KEYWORD:
+            continue
+        else:
+            args[name] = param.default if param.default is not inspect.Parameter.empty else None
+    return args
 
-        # NOTE: sample_tasks() uses task stats to sample learnable tasks
-        curriculum = task_generator.sample_tasks(NUM_SEED_TASKS*3, random_ratio=0.3) # NOTE: arbitrary numbers
 
+def setup_agent(module_name):
+    try:
+        agent_module = importlib.import_module(f"agent_zoo.{module_name}")
+    except ModuleNotFoundError:
+        raise ValueError(f"Agent module {module_name} not found under the agent_zoo directory.")
+
+    recurrent_policy = getattr(agent_module, "Recurrent", None)
+
+    def agent_creator(env, args):
+        policy = agent_module.Policy(env, **args.policy)
+        if not args.no_recurrence and recurrent_policy is not None:
+            policy = recurrent_policy(env, policy, **args.recurrent)
+            policy = pufferlib.frameworks.cleanrl.RecurrentPolicy(policy)
+        else:
+            policy = pufferlib.frameworks.cleanrl.Policy(policy)
+        return policy.to(args.train.device)
+
+    init_args = {
+        "policy": get_init_args(agent_module.Policy.__init__),
+        "recurrent": get_init_args(agent_module.Recurrent.__init__),
+        "reward_wrapper": get_init_args(agent_module.RewardWrapper.__init__),
+    }
+
+    return agent_module, agent_creator, init_args
+
+
+def combine_config_args(parser, args, config):
+    clean_parser = argparse.ArgumentParser(parents=[parser])
+    for name, sub_config in config.items():
+        args[name] = {}
+        for key, value in sub_config.items():
+            data_key = f"{name}.{key}"
+            cli_key = f"--{data_key}".replace("_", "-")
+            if isinstance(value, bool) and value is False:
+                parser.add_argument(cli_key, default=value, action="store_true")
+                clean_parser.add_argument(cli_key, default=value, action="store_true")
+            elif isinstance(value, bool) and value is True:
+                data_key = f"{name}.no_{key}"
+                cli_key = f"--{data_key}".replace("_", "-")
+                parser.add_argument(cli_key, default=value, action="store_false")
+                clean_parser.add_argument(cli_key, default=value, action="store_false")
+            else:
+                parser.add_argument(cli_key, default=value, type=type(value))
+                clean_parser.add_argument(cli_key, default=value, metavar="", type=type(value))
+
+            args[name][key] = getattr(parser.parse_known_args()[0], data_key)
+        args[name] = pufferlib.namespace(**args[name])
+
+    clean_parser.parse_args(sys.argv[1:])
+    return args
+
+
+def update_args(args, mode=None):
+    args = pufferlib.namespace(**args)
+
+    args.track = not args.no_track
+    args.env.curriculum_file_path = args.curriculum
+
+    vec = args.vectorization
+    if vec == "serial" or args.debug:
+        args.vectorization = pufferlib.vectorization.Serial
+    elif vec == "multiprocessing":
+        args.vectorization = pufferlib.vectorization.Multiprocessing
+    elif vec == "ray":
+        args.vectorization = pufferlib.vectorization.Ray
     else:
-        from curriculum_generation import curriculum_tutorial  # custom tutorial
-        task_encoder = TaskEncoder(LLM_CHECKPOINT, curriculum_tutorial, batch_size=2)
-        curriculum = curriculum_tutorial.curriculum
+        raise ValueError("Invalid --vectorization (serial/multiprocessing/ray).")
 
-    # Use the train_task_spec to train agents
-    task_encoder.get_task_embedding(curriculum, save_to_file=CUSTOM_CURRICULUM_FILE)
-    task_encoder.close()
-    trainer.data.sort_keys = []
-    reinforcement_learning_track(trainer, args)
+    # TODO: load the trained baseline from wandb
+    # elif args.baseline:
+    #     args.track = True
+    #     version = '.'.join(pufferlib.__version__.split('.')[:2])
+    #     args.exp_name = f'puf-{version}-nmmo'
+    #     args.wandb_group = f'puf-{version}-baseline'
+    #     shutil.rmtree(f'experiments/{args.exp_name}', ignore_errors=True)
+    #     run = init_wandb(args, resume=False)
+    #     if args.mode == 'evaluate':
+    #         model_name = f'puf-{version}-nmmo_model:latest'
+    #         artifact = run.use_artifact(model_name)
+    #         data_dir = artifact.download()
+    #         model_file = max(os.listdir(data_dir))
+    #         args.eval_model_path = os.path.join(data_dir, model_file)
+
+    if mode in ["evaluate", "replay"]:
+        assert args.eval_model_path is not None, "Eval mode requires a path to checkpoints"
+        args.track = False
+        # Disable env pool - see the comment about next_lstm_state in clean_pufferl.evaluate()
+        args.train.env_pool = False
+        args.env.resilient_population = 0
+        args.reward_wrapper.eval_mode = True
+        args.reward_wrapper.early_stop_agent_num = 0
+
+    if mode == "replay":
+        args.train.num_envs = args.train.envs_per_worker = args.train.envs_per_batch = 1
+        args.vectorization = pufferlib.vectorization.Serial
+
+    return args
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-
-    # You can either edit the defaults in config.py or set args
-    # from the commandline.
-    args = config.create_config(config.Config)
-
-    # Avoid OOMing your machine for local testing
-    if args.local_mode:
-        args.num_envs = 1
-        args.num_buffers = 1
-        args.use_serial_vecenv = True
-        args.rollout_batch_size = 2**10
-
-    if args.track == "rl":
-      args.tasks_path = BASELINE_CURRICULUM_FILE
-      trainer = setup_env(args)
-      reinforcement_learning_track(trainer, args)
-    elif args.track == "curriculum":
-      args.tasks_path = CUSTOM_CURRICULUM_FILE
-      trainer = setup_env(args)
-      curriculum_generation_track(trainer, args, use_elm=True)
+    parser = argparse.ArgumentParser(description="Parse environment argument", add_help=False)
+    parser.add_argument(
+        "-m", "--mode", type=str, default="train", choices="train sweep replay".split()
+    )
+    parser.add_argument(
+        "-a", "--agent", type=str, default="neurips23_start_kit", help="Agent module to use"
+    )
+    parser.add_argument(
+        "-n", "--exp-name", type=str, default=None, help="Need exp name to resume the experiment"
+    )
+    parser.add_argument(
+        "-p", "--eval-model-path", type=str, default=None, help="Path to model to evaluate"
+    )
+    parser.add_argument(
+        "-c", "--curriculum", type=str, default=BASELINE_CURRICULUM, help="Path to curriculum file"
+    )
+    parser.add_argument(
+        "-t",
+        "--task-to-assign",
+        type=int,
+        default=None,
+        help="The index of the task to assign in the curriculum file",
+    )
+    # parser.add_argument(
+    #     "--test-curriculum", type=str, default=BASELINE_CURRICULUM, help="Path to curriculum file"
+    # )
+    parser.add_argument("--syllabus", action="store_true", help="Use Syllabus for curriculum")
+    # parser.add_argument('--baseline', action='store_true', help='Baseline run')
+    parser.add_argument(
+        "--vectorization",
+        type=str,
+        default="multiprocessing",
+        choices="serial multiprocessing ray".split(),
+    )
+    parser.add_argument("--no-recurrence", action="store_true", help="Do not use recurrence")
+    if DEBUG:
+        parser.add_argument("--no-track", default=True, help="Do NOT track on WandB")
+        parser.add_argument("--debug", default=True, help="Debug mode")
     else:
-      raise ValueError(f"Unknown track {args.track}, must be 'rl' or 'curriculum'")
+        parser.add_argument("--no-track", action="store_true", help="Do NOT track on WandB")
+        parser.add_argument("--debug", action="store_true", help="Debug mode")
 
-    trainer.close()
+    args = parser.parse_known_args()[0].__dict__
+    config = load_from_config(args["agent"], debug=args.get("debug", False))
+    agent_module, agent_creator, init_args = setup_agent(args["agent"])
+
+    # Update config with environment defaults
+    config.policy = {**init_args["policy"], **config.policy}
+    config.recurrent = {**init_args["recurrent"], **config.recurrent}
+    config.reward_wrapper = {**init_args["reward_wrapper"], **config.reward_wrapper}
+
+    # Generate argparse menu from config
+    args = combine_config_args(parser, args, config)
+
+    # Perform mode-specific updates
+    args = update_args(args, mode=args["mode"])
+
+    # Make default or syllabus-based env_creator
+    syllabus = None
+    if args.syllabus is True:
+        # NOTE: Setting use_custom_reward to False will ignore the agent's custom reward
+        # and only use the env-provided reward from the curriculum tasks
+        args.reward_wrapper.use_custom_reward = False
+        syllabus, env_creator = syllabus_wrapper.make_syllabus_env_creator(args, agent_module)
+    else:
+        args.env.curriculum_file_path = args.curriculum
+        env_creator = environment.make_env_creator(reward_wrapper_cls=agent_module.RewardWrapper)
+
+    if args.train.env_pool is True:
+        logging.warning(
+            "Env_pool is enabled. This may increase training speed but break determinism."
+        )
+
+    if args.track:
+        args.exp_name = init_wandb(args).id
+    else:
+        args.exp_name = f"nmmo_{time.strftime('%Y%m%d_%H%M%S')}"
+
+    if args.mode == "train":
+        train(args, env_creator, agent_creator, syllabus)
+        exit(0)
+    elif args.mode == "sweep":
+        sweep(args, env_creator, agent_creator)
+        exit(0)
+    elif args.mode == "replay":
+        generate_replay(args, env_creator, agent_creator)
+        exit(0)
+    else:
+        raise ValueError("Mode must be one of train, sweep, or evaluate")
