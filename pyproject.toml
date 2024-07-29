@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "accelerate==0.27.2",
-    "nmmo@git+https://github.com/NeuralMMO/environment@2.1",
+    "nmmo>=2.1,<2.2",
     "polars==0.20.21",
     "pufferlib[nmmo]>=0.7.3",
     "psutil==5.9.8",
