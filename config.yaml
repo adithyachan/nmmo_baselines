@@ -1,6 +1,6 @@
 wandb:
-  project: nmmo-baselines
-  entity: kywch
+  project: cs571-nmmo
+  entity: adithya-chandrasekar
   group: ~
 
 debug:
