@@ -101,6 +101,8 @@ reward_wrapper:
   use_custom_reward: True
 
 neurips23_start_kit:
+  train:
+    total_timesteps: 1_000_000
   reward_wrapper:
     heal_bonus_weight: 0.03
     explore_bonus_weight: 0.01
